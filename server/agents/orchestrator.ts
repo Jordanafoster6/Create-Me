@@ -19,30 +19,48 @@ export class OrchestratorAgent {
 
   async processMessage(message: ChatMessage): Promise<ChatMessage> {
     try {
-      // Analyze user intent
-      const intent = await this.analyzeIntent(message);
+      // Get response from OpenAI
+      const aiResponse = await generateChatResponse([message]);
 
+      // Parse the JSON response
+      let parsedResponse;
+      try {
+        parsedResponse = JSON.parse(aiResponse);
+      } catch (error) {
+        console.error('Failed to parse AI response:', error);
+        return {
+          role: "assistant",
+          content: "I'm having trouble understanding that. Could you please rephrase?"
+        };
+      }
+
+      // Handle different actions based on intent
       let response: string;
-      switch (intent.action) {
+      switch (parsedResponse.action) {
         case "product_search":
-          response = await this.productAgent.handleSearch(intent.query || "");
+          response = await this.productAgent.handleSearch(parsedResponse.query || "");
           break;
         case "design_generation":
-          response = await this.designAgent.generateDesign(intent.prompt || "");
+          response = await this.designAgent.generateDesign(parsedResponse.prompt || "");
           break;
         case "design_modification":
-          response = await this.designAgent.modifyDesign(intent.designId || "", intent.modifications || "");
+          response = await this.designAgent.modifyDesign(
+            parsedResponse.designId || "",
+            parsedResponse.modifications || ""
+          );
           break;
         case "product_configuration":
-          response = await this.configAgent.configureProduct(intent.productId || "", intent.designId || "");
+          response = await this.configAgent.configureProduct(
+            parsedResponse.productId || "",
+            parsedResponse.designId || ""
+          );
           break;
         default:
-          response = await generateChatResponse([
-            {
-              role: "user",
-              content: message.content
-            }
-          ]);
+          // For general chat, format the response nicely
+          response = JSON.stringify({
+            type: "chat",
+            message: parsedResponse.message || "I understand. How can I help you customize your product?"
+          });
       }
 
       return {
@@ -50,29 +68,8 @@ export class OrchestratorAgent {
         content: response
       };
     } catch (error: any) {
+      console.error('Orchestration Error:', error);
       throw new Error(`Orchestration Error: ${error?.message || 'Unknown error'}`);
-    }
-  }
-
-  private async analyzeIntent(message: ChatMessage): Promise<{
-    action: string;
-    query?: string;
-    prompt?: string;
-    designId?: string;
-    modifications?: string;
-    productId?: string;
-  }> {
-    const intentResponse = await generateChatResponse([
-      {
-        role: "user",
-        content: message.content
-      }
-    ]);
-
-    try {
-      return JSON.parse(intentResponse);
-    } catch (error) {
-      return { action: "chat" };
     }
   }
 

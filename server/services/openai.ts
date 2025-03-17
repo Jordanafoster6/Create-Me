@@ -9,12 +9,14 @@ const GPT_MODEL = "gpt-4o";
 
 export async function generateChatResponse(messages: ChatMessage[]): Promise<string> {
   try {
+    const systemMessage = {
+      role: "system",
+      content: "You are a product customization assistant. Analyze user intent and respond in JSON format. Include action type and any relevant parameters."
+    };
+
     const response = await openai.chat.completions.create({
       model: GPT_MODEL,
-      messages: messages.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      })),
+      messages: [systemMessage, ...messages],
       response_format: { type: "json_object" }
     });
 
@@ -54,11 +56,12 @@ export async function analyzeImage(imageUrl: string): Promise<string> {
         {
           role: "user",
           content: [
-            { type: "text", text: "Analyze this image and suggest any needed improvements for product printing:" },
+            { type: "text", text: "Analyze this image and provide feedback in JSON format. Include suggestions for product printing improvements:" },
             { type: "image_url", image_url: { url: imageUrl } }
           ],
         },
       ],
+      response_format: { type: "json_object" }
     });
 
     return response.choices[0].message.content || "No analysis available";
