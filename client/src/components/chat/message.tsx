@@ -29,7 +29,7 @@ export function Message({ message }: MessageProps) {
             console.warn("Could not parse design analysis:", error);
           }
         }
-        products = jsonContent.products?.products;
+        products = jsonContent.products;
       } else if (jsonContent.type === "design") {
         contentType = "design";
         parsedContent = jsonContent.imageUrl;
