@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Message } from "./message";
+import { QuickActions } from "./quick-actions";
 import { ChatMessage } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -35,7 +36,6 @@ export function ChatWindow() {
     },
     onSuccess: (data: ChatMessage) => {
       try {
-        // Handle assistant response
         let assistantContent = data.content;
         try {
           const parsedResponse = JSON.parse(data.content) as ChatResponse;
@@ -51,7 +51,6 @@ export function ChatWindow() {
           content: assistantContent
         };
 
-        // Add only the assistant's message since user message was already added
         setMessages(prev => [...prev, assistantMessage]);
 
         queryClient.invalidateQueries({ queryKey: ['/api/chat'] });
@@ -77,14 +76,12 @@ export function ChatWindow() {
     e.preventDefault();
     if (!input.trim()) return;
 
-    // Immediately add user message to the chat
     const userMessage: ChatMessage = {
       role: "user",
       content: input
     };
     setMessages(prev => [...prev, userMessage]);
 
-    // Send message to API
     sendMessage.mutate(input);
     setInput("");
   };
@@ -104,8 +101,9 @@ export function ChatWindow() {
         )}
       </ScrollArea>
 
-      <form onSubmit={handleSubmit} className="p-4 border-t">
-        <div className="flex gap-2">
+      <div className="p-4 border-t">
+        <QuickActions onAction={setInput} />
+        <form onSubmit={handleSubmit} className="flex gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -120,8 +118,8 @@ export function ChatWindow() {
           >
             {sendMessage.isPending ? "Sending..." : "Send"}
           </Button>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 }
