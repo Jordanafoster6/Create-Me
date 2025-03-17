@@ -25,9 +25,9 @@ export function ChatWindow() {
   const { toast } = useToast();
 
   const sendMessage = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async (messageContent: string) => {
       const userMessage: ChatMessage = {
-        content,
+        content: messageContent,
         role: "user"
       };
       const response = await apiRequest("POST", "/api/chat", userMessage);
@@ -51,10 +51,8 @@ export function ChatWindow() {
           content: assistantContent
         };
 
-        setMessages(prev => [...prev, 
-          { role: "user", content: input },
-          assistantMessage
-        ]);
+        // Add only the assistant's message since user message was already added
+        setMessages(prev => [...prev, assistantMessage]);
 
         queryClient.invalidateQueries({ queryKey: ['/api/chat'] });
       } catch (error) {
@@ -78,6 +76,15 @@ export function ChatWindow() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
+
+    // Immediately add user message to the chat
+    const userMessage: ChatMessage = {
+      role: "user",
+      content: input
+    };
+    setMessages(prev => [...prev, userMessage]);
+
+    // Send message to API
     sendMessage.mutate(input);
     setInput("");
   };
