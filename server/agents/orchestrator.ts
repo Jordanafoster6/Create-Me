@@ -58,7 +58,7 @@ export class OrchestratorAgent {
           this.context.set("currentProductDetails", parsedResponse.productDetails);
           this.context.set("currentDesignContent", parsedResponse.designContent);
 
-          // First get the design right before showing products
+          // First focus on getting the design right
           const designResponse = await this.designAgent.generateDesign(parsedResponse.designContent);
 
           // Enter design refinement mode
@@ -97,7 +97,7 @@ export class OrchestratorAgent {
       // Analyze if the user is approving or requesting changes
       const approvalResponse = await generateChatResponse([{
         role: "system",
-        content: `Determine if the user is approving the design or requesting changes. Respond with JSON:
+        content: `Determine if the user is approving the design or requesting changes. Consider the context of the current design when analyzing modifications. Respond with JSON:
         {
           "type": "design_feedback",
           "isApproved": boolean,

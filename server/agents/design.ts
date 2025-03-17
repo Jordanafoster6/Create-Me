@@ -2,8 +2,15 @@ import { generateImage, analyzeImage } from "../services/openai";
 import { DesignAnalysis } from "@shared/schema";
 
 export class DesignAgent {
+  private originalPrompt: string = "";
+  private currentPrompt: string = "";
+
   async generateDesign(prompt: string): Promise<string> {
     try {
+      // Store the original prompt
+      this.originalPrompt = prompt;
+      this.currentPrompt = prompt;
+
       // Generate image using DALL-E
       const imageUrl = await generateImage(prompt);
 
@@ -14,6 +21,8 @@ export class DesignAgent {
         type: "design",
         imageUrl,
         analysis,
+        originalPrompt: this.originalPrompt,
+        currentPrompt: this.currentPrompt,
         status: "success"
       });
     } catch (error: unknown) {
@@ -22,14 +31,28 @@ export class DesignAgent {
     }
   }
 
-  async modifyDesign(designId: string, modifications: string): Promise<string> {
+  async modifyDesign(previousDesign: string, modifications: string): Promise<string> {
     try {
-      // Apply modifications using DALL-E
-      const newImageUrl = await generateImage(modifications);
+      // Parse the previous design to get the context
+      const prevDesignData = JSON.parse(previousDesign);
+
+      // Combine the original context with modifications
+      this.currentPrompt = `Original design was: ${prevDesignData.currentPrompt}. 
+Modifications requested: ${modifications}
+Keep the core elements while applying these modifications.`;
+
+      // Generate new image with combined context
+      const newImageUrl = await generateImage(this.currentPrompt);
+
+      // Analyze the new image
+      const analysis = await analyzeImage(newImageUrl);
 
       return JSON.stringify({
         type: "design",
         imageUrl: newImageUrl,
+        analysis,
+        originalPrompt: prevDesignData.originalPrompt,
+        currentPrompt: this.currentPrompt,
         status: "success"
       });
     } catch (error: unknown) {
