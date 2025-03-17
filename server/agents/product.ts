@@ -10,10 +10,16 @@ interface ProductDetails {
 export class ProductResearchAgent {
   async handleSearch(productDetails: ProductDetails): Promise<string> {
     try {
-      const blueprints = await getBlueprints();
+      const blueprintsResponse = await getBlueprints();
+
+      // Ensure we have valid data before proceeding
+      if (!blueprintsResponse || !Array.isArray(blueprintsResponse.data)) {
+        console.error('Invalid blueprints response:', blueprintsResponse);
+        throw new Error('Invalid response from Printify blueprints API');
+      }
 
       // Filter and rank blueprints based on product details
-      const rankedBlueprints = this.rankBlueprints(blueprints.data, productDetails);
+      const rankedBlueprints = this.rankBlueprints(blueprintsResponse.data, productDetails);
 
       return JSON.stringify({
         products: rankedBlueprints.slice(0, 5),
@@ -37,8 +43,8 @@ export class ProductResearchAgent {
     return blueprints
       .map(blueprint => {
         let score = 0;
-        const title = blueprint.title.toLowerCase();
-        const description = blueprint.description?.toLowerCase() || '';
+        const title = (blueprint.title || '').toLowerCase();
+        const description = (blueprint.description || '').toLowerCase();
 
         // Check product type match
         if (productDetails.type) {

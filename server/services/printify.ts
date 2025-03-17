@@ -62,8 +62,15 @@ export async function createProduct(data: {
 export async function getBlueprints() {
   try {
     const response = await api.get('/catalog/blueprints.json');
+    console.log('Blueprints API Response:', response.data);
+
+    if (!response.data || !Array.isArray(response.data.data)) {
+      throw new Error('Invalid blueprint data structure received from Printify API');
+    }
+
     return response.data;
   } catch (error: any) {
+    console.error('Printify Blueprints Error:', error.response?.data || error.message);
     throw new Error(`Printify Blueprints Error: ${error?.message || 'Unknown error'}`);
   }
 }
