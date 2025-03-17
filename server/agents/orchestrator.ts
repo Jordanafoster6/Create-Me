@@ -201,13 +201,26 @@ export class OrchestratorAgent {
       } else if (parsedResponse.selectedProduct !== null) {
         // User has selected a product, move to configuration
         this.context.set("productSelectionMode", false);
-        // TODO: Implement product configuration flow
+
+        // Get the selected product and design
+        const designData = JSON.parse(this.context.get("currentDesign"));
+        const productResponse = await this.productAgent.handleSearch(this.context.get("currentProductDetails"), false);
+        const { products } = JSON.parse(productResponse);
+        const selectedProduct = products[parsedResponse.selectedProduct - 1];
+
+        if (!selectedProduct) {
+          throw new Error("Selected product not found");
+        }
+
+        // Configure the product with the design
+        const configuredProduct = await this.configAgent.configureProduct(
+          selectedProduct,
+          designData.imageUrl
+        );
+
         return {
           role: "assistant",
-          content: JSON.stringify({
-            type: "chat",
-            message: "Great choice! Let's configure your selected product with the design we created."
-          })
+          content: configuredProduct
         };
       }
 
