@@ -35,68 +35,65 @@ export class OrchestratorAgent {
       }
 
       // Get initial parsing of user intent from OpenAI
-      const aiResponse = await generateChatResponse([message]);
-      console.log('AI Response:', aiResponse);
+      const aiResponse = await generateChatResponse([{
+        role: "system",
+        content: `Parse this message into product details and design content. Respond with JSON:
+        {
+          "type": "parse",
+          "productDetails": {
+            "type": "product type if mentioned",
+            "color": "color if mentioned",
+            "size": "size if mentioned",
+            "material": "material if mentioned"
+          },
+          "designContent": "description of the design content only"
+        }`
+      }, message]);
 
       let parsedResponse;
       try {
         parsedResponse = JSON.parse(aiResponse);
-
-        // Handle design request
         if (parsedResponse.type === "parse") {
-          // Store any product details mentioned for later
-          if (parsedResponse.productDetails) {
-            const currentDetails = this.context.get("currentProductDetails") || {};
-            this.context.set("currentProductDetails", {
-              ...currentDetails,
-              ...parsedResponse.productDetails
-            });
-          }
+          // Store the parsed details in context
+          this.context.set("currentProductDetails", parsedResponse.productDetails);
+          this.context.set("currentDesignContent", parsedResponse.designContent);
 
-          // Start with design generation
-          const designResponse = await this.designAgent.generateDesign(parsedResponse.designContent);
-
-          // Set design refinement mode
-          this.context.set("designRefinementMode", true);
-          this.context.set("currentDesign", designResponse);
-
-          // Silently update blueprint matches in context
+          // First handle product search
           if (parsedResponse.productDetails.type) {
-            const blueprintResponse = await this.productAgent.findMatchingBlueprints(
-              this.context.get("currentProductDetails")
+            const productResponse = await this.productAgent.handleSearch(
+              `${parsedResponse.productDetails.type} ${parsedResponse.productDetails.color || ''}`
             );
-            this.context.set("matchingBlueprints", JSON.parse(blueprintResponse).blueprints);
+
+            // After finding products, proceed to design generation
+            const designResponse = await this.designAgent.generateDesign(parsedResponse.designContent);
+
+            // Set design refinement mode
+            this.context.set("designRefinementMode", true);
+            this.context.set("currentDesign", designResponse);
+
+            return {
+              role: "assistant",
+              content: JSON.stringify({
+                type: "design_and_products",
+                design: JSON.parse(designResponse),
+                products: JSON.parse(productResponse),
+                message: "I've found some matching products and created an initial design. Let's focus on getting the design just right first - how does this design look to you? We can make any adjustments needed."
+              })
+            };
           }
-
-          const designJson = JSON.parse(designResponse);
-          return {
-            role: "assistant",
-            content: JSON.stringify({
-              type: "design",
-              ...designJson,
-              message: "I've created this design based on your description. Let's focus on getting the design just right before we move on to product selection. How does this look to you? We can make any adjustments needed."
-            })
-          };
         }
-
-        // For non-design requests, prompt for design details
-        return {
-          role: "assistant",
-          content: JSON.stringify({
-            type: "chat",
-            message: "Could you describe the design or artwork you'd like on your product? This will help me create something that matches your vision."
-          })
-        };
       } catch (error) {
         console.error('Failed to parse AI response:', error);
-        return {
-          role: "assistant",
-          content: JSON.stringify({
-            type: "chat",
-            message: "I had trouble understanding that. Could you describe the design you'd like on your product?"
-          })
-        };
       }
+
+      // Fallback response if parsing fails
+      return {
+        role: "assistant",
+        content: JSON.stringify({
+          type: "chat",
+          message: "Could you please tell me what kind of product you'd like to customize and what design you'd like on it?"
+        })
+      };
     } catch (error: any) {
       console.error('Orchestration Error:', error);
       throw new Error(`Orchestration Error: ${error?.message || 'Unknown error'}`);
@@ -119,17 +116,13 @@ export class OrchestratorAgent {
       const parsedResponse = JSON.parse(approvalResponse);
 
       if (parsedResponse.isApproved) {
-        // If design is approved, now we can show the matching blueprints
-        const matchingBlueprints = this.context.get("matchingBlueprints");
+        // Exit design refinement mode and proceed with product configuration
         this.context.set("designRefinementMode", false);
-
         return {
           role: "assistant",
           content: JSON.stringify({
-            type: "product_options",
-            blueprints: matchingBlueprints,
-            design: JSON.parse(this.context.get("currentDesign")),
-            message: "Great! Now that we have your design finalized, I've found some products that match your requirements. Which one would you like to use?"
+            type: "chat",
+            message: "Great! Now that we have your design finalized, let's configure your product. Which of the suggested products would you like to use?"
           })
         };
       } else {
