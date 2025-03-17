@@ -13,13 +13,19 @@ export function Message({ message }: MessageProps) {
   // Try to parse the content as JSON if it's from assistant
   let parsedContent = message.content;
   let contentType = "text";
+  let analysis = null;
 
   if (!isUser && message.content) {
     try {
       const jsonContent = JSON.parse(message.content);
-      if (jsonContent.type === "design" && jsonContent.imageUrl) {
-        contentType = "image";
+      if (jsonContent.imageUrl) {
+        contentType = "design";
         parsedContent = jsonContent.imageUrl;
+        try {
+          analysis = JSON.parse(jsonContent.analysis);
+        } catch (error) {
+          console.warn("Could not parse analysis:", error);
+        }
       } else if (jsonContent.type === "chat" && jsonContent.message) {
         parsedContent = jsonContent.message;
       }
@@ -42,8 +48,8 @@ export function Message({ message }: MessageProps) {
           isUser ? "bg-primary text-primary-foreground" : "bg-secondary"
         )}
       >
-        {contentType === "image" ? (
-          <div className="space-y-2">
+        {contentType === "design" ? (
+          <div className="space-y-4">
             <p className="text-sm mb-2">Here's your generated design:</p>
             <AspectRatio ratio={1}>
               <img
@@ -52,6 +58,18 @@ export function Message({ message }: MessageProps) {
                 className="rounded-md object-cover w-full h-full"
               />
             </AspectRatio>
+            {analysis && (
+              <div className="mt-4 space-y-2">
+                <h4 className="font-medium">Design Analysis:</h4>
+                <p className="text-sm text-muted-foreground">{analysis.imageAnalysis.description}</p>
+                <h4 className="font-medium mt-3">Suggestions:</h4>
+                <ul className="text-sm text-muted-foreground list-disc pl-4">
+                  {Object.entries(analysis.suggestions).map(([key, value]) => (
+                    <li key={key}>{value}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-sm whitespace-pre-wrap">{parsedContent}</p>
