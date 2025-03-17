@@ -112,19 +112,20 @@ export class OrchestratorAgent {
         this.context.set("designRefinementMode", false);
         this.context.set("designApproved", true);
 
-        // Get the stored product details
+        // Get the stored product details and search for matching products
         const productDetails = this.context.get("currentProductDetails");
         const productResponse = await this.productAgent.handleSearch(
           `${productDetails.type} ${productDetails.color || ''}`
         );
 
+        // Create a combined response with both the final design and product options
         return {
           role: "assistant",
           content: JSON.stringify({
             type: "design_and_products",
             design: JSON.parse(this.context.get("currentDesign")),
             products: JSON.parse(productResponse),
-            message: "Great! Now that we have your design finalized, here are some products that match your requirements. Which one would you like to use?"
+            message: "Perfect! Now that we have your design finalized, let's choose the right product for it. I've found some products that match your requirements. Please take a look at the options below and let me know which one you'd prefer. You can refer to them by their name or number in the list."
           })
         };
       } else {
@@ -142,7 +143,7 @@ export class OrchestratorAgent {
           content: JSON.stringify({
             type: "design",
             ...JSON.parse(newDesign),
-            message: "I've updated the design based on your feedback. How does this look now?"
+            message: "I've updated the design based on your feedback. How does this look now? We can make more adjustments if needed."
           })
         };
       }
