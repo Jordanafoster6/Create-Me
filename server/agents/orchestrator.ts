@@ -62,8 +62,9 @@ export class OrchestratorAgent {
           if (parsedResponse.designContent) {
             const designResponse = await this.designAgent.generateDesign(parsedResponse.designContent);
 
-            // Store product details for later and enter design refinement mode
+            // Store product details for later use after design approval
             if (parsedResponse.productDetails.type) {
+              // Search for products but don't send to user yet
               const productResponse = await this.productAgent.handleSearch(
                 `${parsedResponse.productDetails.type} ${parsedResponse.productDetails.color || ''}`
               );
