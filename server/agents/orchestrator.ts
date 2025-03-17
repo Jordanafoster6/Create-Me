@@ -21,6 +21,7 @@ export class OrchestratorAgent {
     try {
       // Get response from OpenAI
       const aiResponse = await generateChatResponse([message]);
+      console.log('AI Response:', aiResponse);
 
       // Parse the JSON response
       let parsedResponse;
@@ -30,18 +31,21 @@ export class OrchestratorAgent {
         console.error('Failed to parse AI response:', error);
         return {
           role: "assistant",
-          content: "I'm having trouble understanding that. Could you please rephrase?"
+          content: JSON.stringify({
+            type: "chat",
+            message: "I'm having trouble understanding that. Could you please rephrase?"
+          })
         };
       }
 
       // Handle different actions based on intent
       let response: string;
-      switch (parsedResponse.action) {
-        case "product_search":
-          response = await this.productAgent.handleSearch(parsedResponse.query || "");
-          break;
+      switch (parsedResponse.type) {
         case "design_generation":
           response = await this.designAgent.generateDesign(parsedResponse.prompt || "");
+          break;
+        case "product_search":
+          response = await this.productAgent.handleSearch(parsedResponse.query || "");
           break;
         case "design_modification":
           response = await this.designAgent.modifyDesign(
@@ -55,11 +59,16 @@ export class OrchestratorAgent {
             parsedResponse.designId || ""
           );
           break;
-        default:
-          // For general chat, format the response nicely
+        case "chat":
           response = JSON.stringify({
             type: "chat",
             message: parsedResponse.message || "I understand. How can I help you customize your product?"
+          });
+          break;
+        default:
+          response = JSON.stringify({
+            type: "chat",
+            message: "I'm not sure how to help with that. Could you try rephrasing your request?"
           });
       }
 
