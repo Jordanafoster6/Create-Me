@@ -54,18 +54,21 @@ export class OrchestratorAgent {
       try {
         parsedResponse = JSON.parse(aiResponse);
         if (parsedResponse.type === "parse") {
-          // Store the parsed details in context
+          // Store the parsed details in context for later use
           this.context.set("currentProductDetails", parsedResponse.productDetails);
           this.context.set("currentDesignContent", parsedResponse.designContent);
 
-          // First handle product search
-          if (parsedResponse.productDetails.type) {
-            const productResponse = await this.productAgent.handleSearch(
-              `${parsedResponse.productDetails.type} ${parsedResponse.productDetails.color || ''}`
-            );
-
-            // After finding products, proceed to design generation
+          // First, let's focus on generating the design
+          if (parsedResponse.designContent) {
             const designResponse = await this.designAgent.generateDesign(parsedResponse.designContent);
+
+            // Store product details for later and enter design refinement mode
+            if (parsedResponse.productDetails.type) {
+              const productResponse = await this.productAgent.handleSearch(
+                `${parsedResponse.productDetails.type} ${parsedResponse.productDetails.color || ''}`
+              );
+              this.context.set("matchingProducts", productResponse);
+            }
 
             // Set design refinement mode
             this.context.set("designRefinementMode", true);
@@ -73,12 +76,7 @@ export class OrchestratorAgent {
 
             return {
               role: "assistant",
-              content: JSON.stringify({
-                type: "design_and_products",
-                design: JSON.parse(designResponse),
-                products: JSON.parse(productResponse),
-                message: "I've found some matching products and created an initial design. Let's focus on getting the design just right first - how does this design look to you? We can make any adjustments needed."
-              })
+              content: designResponse
             };
           }
         }
@@ -116,13 +114,16 @@ export class OrchestratorAgent {
       const parsedResponse = JSON.parse(approvalResponse);
 
       if (parsedResponse.isApproved) {
-        // Exit design refinement mode and proceed with product configuration
+        // Design is approved, show the matching products
+        const matchingProducts = this.context.get("matchingProducts");
         this.context.set("designRefinementMode", false);
+
         return {
           role: "assistant",
           content: JSON.stringify({
-            type: "chat",
-            message: "Great! Now that we have your design finalized, let's configure your product. Which of the suggested products would you like to use?"
+            type: "products",
+            products: JSON.parse(matchingProducts),
+            message: "Great! Now that we have your design finalized, here are the products that match your requirements. Which one would you like to use?"
           })
         };
       } else {
