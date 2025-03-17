@@ -6,10 +6,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Message } from "./message";
 import { ChatMessage } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export function ChatWindow() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const { toast } = useToast();
 
   const sendMessage = useMutation({
     mutationFn: async (content: string) => {
@@ -22,6 +24,13 @@ export function ChatWindow() {
     onSuccess: (data) => {
       setMessages(prev => [...prev, data]);
       queryClient.invalidateQueries({ queryKey: ['/api/chat'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error sending message",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   });
 
@@ -45,6 +54,13 @@ export function ChatWindow() {
         {messages.map((message, i) => (
           <Message key={i} message={message} />
         ))}
+        {sendMessage.isPending && (
+          <div className="flex justify-start mb-4">
+            <div className="bg-secondary rounded-lg p-4">
+              <div className="animate-pulse">Thinking...</div>
+            </div>
+          </div>
+        )}
       </ScrollArea>
 
       <form onSubmit={handleSubmit} className="p-4 border-t">
@@ -54,13 +70,14 @@ export function ChatWindow() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message..."
             className="flex-1"
+            disabled={sendMessage.isPending}
           />
           <Button 
             type="submit"
             disabled={sendMessage.isPending}
             className="bg-primary hover:bg-primary/90"
           >
-            Send
+            {sendMessage.isPending ? "Sending..." : "Send"}
           </Button>
         </div>
       </form>

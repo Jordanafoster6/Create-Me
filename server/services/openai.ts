@@ -20,6 +20,7 @@ export async function generateChatResponse(messages: ChatMessage[]): Promise<str
 
     return response.choices[0].message.content || "";
   } catch (error: any) {
+    console.error('OpenAI Chat Error:', error);
     throw new Error(`OpenAI Chat Error: ${error?.message || 'Unknown error'}`);
   }
 }
@@ -40,6 +41,7 @@ export async function generateImage(prompt: string): Promise<string> {
 
     return response.data[0].url;
   } catch (error: any) {
+    console.error('DALL-E Image Generation Error:', error);
     throw new Error(`DALL-E Image Generation Error: ${error?.message || 'Unknown error'}`);
   }
 }
@@ -61,6 +63,7 @@ export async function analyzeImage(imageUrl: string): Promise<string> {
 
     return response.choices[0].message.content || "No analysis available";
   } catch (error: any) {
+    console.error('Image Analysis Error:', error);
     throw new Error(`Image Analysis Error: ${error?.message || 'Unknown error'}`);
   }
 }
