@@ -58,29 +58,21 @@ export class OrchestratorAgent {
           this.context.set("currentProductDetails", parsedResponse.productDetails);
           this.context.set("currentDesignContent", parsedResponse.designContent);
 
-          // First handle product search
-          if (parsedResponse.productDetails.type) {
-            const productResponse = await this.productAgent.handleSearch(
-              `${parsedResponse.productDetails.type} ${parsedResponse.productDetails.color || ''}`
-            );
+          // First get the design right before showing products
+          const designResponse = await this.designAgent.generateDesign(parsedResponse.designContent);
 
-            // After finding products, proceed to design generation
-            const designResponse = await this.designAgent.generateDesign(parsedResponse.designContent);
+          // Enter design refinement mode
+          this.context.set("designRefinementMode", true);
+          this.context.set("currentDesign", designResponse);
 
-            // Set design refinement mode
-            this.context.set("designRefinementMode", true);
-            this.context.set("currentDesign", designResponse);
-
-            return {
-              role: "assistant",
-              content: JSON.stringify({
-                type: "design_and_products",
-                design: JSON.parse(designResponse),
-                products: JSON.parse(productResponse),
-                message: "I've found some matching products and created an initial design. Let's focus on getting the design just right first - how does this design look to you? We can make any adjustments needed."
-              })
-            };
-          }
+          return {
+            role: "assistant",
+            content: JSON.stringify({
+              type: "design",
+              ...JSON.parse(designResponse),
+              message: "I've created an initial design based on your description. Let's focus on getting the design just right first - how does this look to you? We can make any adjustments needed."
+            })
+          };
         }
       } catch (error) {
         console.error('Failed to parse AI response:', error);
@@ -116,13 +108,23 @@ export class OrchestratorAgent {
       const parsedResponse = JSON.parse(approvalResponse);
 
       if (parsedResponse.isApproved) {
-        // Exit design refinement mode and proceed with product configuration
+        // Design is approved, now we can search for matching products
         this.context.set("designRefinementMode", false);
+        this.context.set("designApproved", true);
+
+        // Get the stored product details
+        const productDetails = this.context.get("currentProductDetails");
+        const productResponse = await this.productAgent.handleSearch(
+          `${productDetails.type} ${productDetails.color || ''}`
+        );
+
         return {
           role: "assistant",
           content: JSON.stringify({
-            type: "chat",
-            message: "Great! Now that we have your design finalized, let's configure your product. Which of the suggested products would you like to use?"
+            type: "design_and_products",
+            design: JSON.parse(this.context.get("currentDesign")),
+            products: JSON.parse(productResponse),
+            message: "Great! Now that we have your design finalized, here are some products that match your requirements. Which one would you like to use?"
           })
         };
       } else {
@@ -131,6 +133,9 @@ export class OrchestratorAgent {
           this.context.get("currentDesign"),
           parsedResponse.changes
         );
+
+        // Update the current design in context
+        this.context.set("currentDesign", newDesign);
 
         return {
           role: "assistant",
