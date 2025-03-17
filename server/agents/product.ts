@@ -10,16 +10,25 @@ interface ProductDetails {
 export class ProductResearchAgent {
   async handleSearch(productDetails: ProductDetails): Promise<string> {
     try {
+      console.log('Searching with product details:', productDetails);
       const blueprintsResponse = await getBlueprints();
+      console.log('Received blueprints response:', blueprintsResponse);
 
       // Ensure we have valid data before proceeding
-      if (!blueprintsResponse || !Array.isArray(blueprintsResponse.data)) {
+      if (!blueprintsResponse || !blueprintsResponse.data) {
         console.error('Invalid blueprints response:', blueprintsResponse);
         throw new Error('Invalid response from Printify blueprints API');
       }
 
+      // Get the array of blueprints from the response
+      const blueprints = Array.isArray(blueprintsResponse.data) ? 
+        blueprintsResponse.data : 
+        [blueprintsResponse.data];
+
       // Filter and rank blueprints based on product details
-      const rankedBlueprints = this.rankBlueprints(blueprintsResponse.data, productDetails);
+      const rankedBlueprints = this.rankBlueprints(blueprints, productDetails);
+
+      console.log('Ranked blueprints:', rankedBlueprints);
 
       return JSON.stringify({
         products: rankedBlueprints.slice(0, 5),
@@ -43,8 +52,10 @@ export class ProductResearchAgent {
     return blueprints
       .map(blueprint => {
         let score = 0;
-        const title = (blueprint.title || '').toLowerCase();
-        const description = (blueprint.description || '').toLowerCase();
+        const title = blueprint.title?.toLowerCase() || '';
+        const description = blueprint.description?.toLowerCase() || '';
+
+        console.log('Ranking blueprint:', { title, description });
 
         // Check product type match
         if (productDetails.type) {
