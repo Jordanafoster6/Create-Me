@@ -1,4 +1,5 @@
 import { generateImage, analyzeImage } from "../services/openai";
+import { DesignAnalysis } from "@shared/schema";
 
 export class DesignAgent {
   async generateDesign(prompt: string): Promise<string> {
@@ -10,6 +11,7 @@ export class DesignAgent {
       const analysis = await analyzeImage(imageUrl);
 
       return JSON.stringify({
+        type: "design",
         imageUrl,
         analysis,
         status: "success"
@@ -22,11 +24,11 @@ export class DesignAgent {
 
   async modifyDesign(designId: string, modifications: string): Promise<string> {
     try {
-      // Get existing design
       // Apply modifications using DALL-E
       const newImageUrl = await generateImage(modifications);
 
       return JSON.stringify({
+        type: "design",
         imageUrl: newImageUrl,
         status: "success"
       });

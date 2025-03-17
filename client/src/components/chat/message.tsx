@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { ChatMessage } from "@shared/schema";
+import { ChatMessage, DesignAnalysis, DesignResponse } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 
@@ -13,16 +13,16 @@ export function Message({ message }: MessageProps) {
   // Try to parse the content as JSON if it's from assistant
   let parsedContent = message.content;
   let contentType = "text";
-  let analysis = null;
+  let analysis: DesignAnalysis | null = null;
 
   if (!isUser && message.content) {
     try {
       const jsonContent = JSON.parse(message.content);
-      if (jsonContent.imageUrl) {
+      if (jsonContent.type === "design" && jsonContent.imageUrl) {
         contentType = "design";
         parsedContent = jsonContent.imageUrl;
         try {
-          analysis = JSON.parse(jsonContent.analysis);
+          analysis = JSON.parse(jsonContent.analysis) as DesignAnalysis;
         } catch (error) {
           console.warn("Could not parse analysis:", error);
         }
@@ -61,13 +61,19 @@ export function Message({ message }: MessageProps) {
             {analysis && (
               <div className="mt-4 space-y-2">
                 <h4 className="font-medium">Design Analysis:</h4>
-                <p className="text-sm text-muted-foreground">{analysis.imageAnalysis.description}</p>
-                <h4 className="font-medium mt-3">Suggestions:</h4>
-                <ul className="text-sm text-muted-foreground list-disc pl-4">
-                  {Object.entries(analysis.suggestions).map(([key, value]) => (
-                    <li key={key}>{value}</li>
-                  ))}
-                </ul>
+                <p className="text-sm text-muted-foreground">
+                  {analysis.imageAnalysis.description}
+                </p>
+                {analysis.suggestions && (
+                  <>
+                    <h4 className="font-medium mt-3">Suggestions:</h4>
+                    <ul className="text-sm text-muted-foreground list-disc pl-4">
+                      {Object.entries(analysis.suggestions).map(([key, value]) => (
+                        <li key={key}>{value}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
               </div>
             )}
           </div>

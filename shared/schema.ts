@@ -80,3 +80,20 @@ export const ProductConfigSchema = z.object({
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 export type DesignRequest = z.infer<typeof DesignRequestSchema>;
 export type ProductConfig = z.infer<typeof ProductConfigSchema>;
+
+export const DesignAnalysisSchema = z.object({
+  imageAnalysis: z.object({
+    description: z.string()
+  }),
+  suggestions: z.record(z.string())
+});
+
+export const DesignResponseSchema = z.object({
+  type: z.literal("design"),
+  imageUrl: z.string(),
+  analysis: z.string(),
+  status: z.string()
+});
+
+export type DesignAnalysis = z.infer<typeof DesignAnalysisSchema>;
+export type DesignResponse = z.infer<typeof DesignResponseSchema>;
