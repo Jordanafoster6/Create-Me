@@ -4,6 +4,16 @@ import { ProductResearchAgent } from "./product";
 import { DesignAgent } from "./design";
 import { ConfigurationAgent } from "./config";
 
+interface ParsedMessage {
+  productDetails: {
+    type?: string;
+    color?: string;
+    size?: string;
+    material?: string;
+  };
+  designContent: string;
+}
+
 export class OrchestratorAgent {
   private productAgent: ProductResearchAgent;
   private designAgent: DesignAgent;
@@ -19,66 +29,121 @@ export class OrchestratorAgent {
 
   async processMessage(message: ChatMessage): Promise<ChatMessage> {
     try {
-      // Get response from OpenAI
-      const aiResponse = await generateChatResponse([message]);
-      console.log('AI Response:', aiResponse);
+      // If we're in a design refinement loop, handle that separately
+      if (this.context.get("designRefinementMode")) {
+        return await this.handleDesignRefinement(message);
+      }
 
-      // Parse the JSON response
+      // Get initial parsing of user intent from OpenAI
+      const aiResponse = await generateChatResponse([{
+        role: "system",
+        content: `Parse this message into product details and design content. Respond with JSON:
+        {
+          "type": "parse",
+          "productDetails": {
+            "type": "product type if mentioned",
+            "color": "color if mentioned",
+            "size": "size if mentioned",
+            "material": "material if mentioned"
+          },
+          "designContent": "description of the design content only"
+        }`
+      }, message]);
+
       let parsedResponse;
       try {
         parsedResponse = JSON.parse(aiResponse);
+        if (parsedResponse.type === "parse") {
+          // Store the parsed details in context
+          this.context.set("currentProductDetails", parsedResponse.productDetails);
+          this.context.set("currentDesignContent", parsedResponse.designContent);
+
+          // First handle product search
+          if (parsedResponse.productDetails.type) {
+            const productResponse = await this.productAgent.handleSearch(
+              `${parsedResponse.productDetails.type} ${parsedResponse.productDetails.color || ''}`
+            );
+
+            // After finding products, proceed to design generation
+            const designResponse = await this.designAgent.generateDesign(parsedResponse.designContent);
+
+            // Set design refinement mode
+            this.context.set("designRefinementMode", true);
+            this.context.set("currentDesign", designResponse);
+
+            return {
+              role: "assistant",
+              content: JSON.stringify({
+                type: "design_and_products",
+                design: JSON.parse(designResponse),
+                products: JSON.parse(productResponse),
+                message: "I've found some matching products and created an initial design. Let's focus on getting the design just right first - how does this design look to you? We can make any adjustments needed."
+              })
+            };
+          }
+        }
       } catch (error) {
         console.error('Failed to parse AI response:', error);
-        return {
-          role: "assistant",
-          content: JSON.stringify({
-            type: "chat",
-            message: "I'm having trouble understanding that. Could you please rephrase?"
-          })
-        };
       }
 
-      // Handle different actions based on intent
-      let response: string;
-      switch (parsedResponse.type) {
-        case "design_generation":
-          response = await this.designAgent.generateDesign(parsedResponse.prompt || "");
-          break;
-        case "product_search":
-          response = await this.productAgent.handleSearch(parsedResponse.query || "");
-          break;
-        case "design_modification":
-          response = await this.designAgent.modifyDesign(
-            parsedResponse.designId || "",
-            parsedResponse.modifications || ""
-          );
-          break;
-        case "product_configuration":
-          response = await this.configAgent.configureProduct(
-            parsedResponse.productId || "",
-            parsedResponse.designId || ""
-          );
-          break;
-        case "chat":
-          response = JSON.stringify({
-            type: "chat",
-            message: parsedResponse.message || "I understand. How can I help you customize your product?"
-          });
-          break;
-        default:
-          response = JSON.stringify({
-            type: "chat",
-            message: "I'm not sure how to help with that. Could you try rephrasing your request?"
-          });
-      }
-
+      // Fallback response if parsing fails
       return {
         role: "assistant",
-        content: response
+        content: JSON.stringify({
+          type: "chat",
+          message: "Could you please tell me what kind of product you'd like to customize and what design you'd like on it?"
+        })
       };
     } catch (error: any) {
       console.error('Orchestration Error:', error);
       throw new Error(`Orchestration Error: ${error?.message || 'Unknown error'}`);
+    }
+  }
+
+  private async handleDesignRefinement(message: ChatMessage): Promise<ChatMessage> {
+    try {
+      // Analyze if the user is approving or requesting changes
+      const approvalResponse = await generateChatResponse([{
+        role: "system",
+        content: `Determine if the user is approving the design or requesting changes. Respond with JSON:
+        {
+          "type": "design_feedback",
+          "isApproved": boolean,
+          "changes": "description of requested changes if any"
+        }`
+      }, message]);
+
+      const parsedResponse = JSON.parse(approvalResponse);
+
+      if (parsedResponse.isApproved) {
+        // Exit design refinement mode and proceed with product configuration
+        this.context.set("designRefinementMode", false);
+        return {
+          role: "assistant",
+          content: JSON.stringify({
+            type: "chat",
+            message: "Great! Now that we have your design finalized, let's configure your product. Which of the suggested products would you like to use?"
+          })
+        };
+      } else {
+        // Generate new design based on requested changes
+        const newDesign = await this.designAgent.modifyDesign(
+          this.context.get("currentDesign"),
+          parsedResponse.changes
+        );
+
+        return {
+          role: "assistant",
+          content: JSON.stringify({
+            type: "design",
+            ...JSON.parse(newDesign),
+            message: "I've updated the design based on your feedback. How does this look now?"
+          })
+        };
+      }
+    } catch (error: any) {
+      console.error('Design Refinement Error:', error);
+      throw new Error(`Design Refinement Error: ${error?.message || 'Unknown error'}`);
     }
   }
 

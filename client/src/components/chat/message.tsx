@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { ChatMessage, DesignAnalysis, DesignResponse } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { ProductPreview } from "@/components/product/preview";
 
 interface MessageProps {
   message: ChatMessage;
@@ -14,11 +15,24 @@ export function Message({ message }: MessageProps) {
   let parsedContent = message.content;
   let contentType = "text";
   let analysis: DesignAnalysis | null = null;
+  let products = null;
+  let jsonContent: any = null; // Added to store parsed JSON for later use
 
   if (!isUser && message.content) {
     try {
-      const jsonContent = JSON.parse(message.content);
-      if (jsonContent.type === "design" && jsonContent.imageUrl) {
+      jsonContent = JSON.parse(message.content);
+      if (jsonContent.type === "design_and_products") {
+        contentType = "design_and_products";
+        parsedContent = jsonContent.message;
+        if (jsonContent.design) {
+          try {
+            analysis = JSON.parse(jsonContent.design.analysis) as DesignAnalysis;
+          } catch (error) {
+            console.warn("Could not parse design analysis:", error);
+          }
+        }
+        products = jsonContent.products?.products;
+      } else if (jsonContent.type === "design") {
         contentType = "design";
         parsedContent = jsonContent.imageUrl;
         try {
@@ -48,7 +62,55 @@ export function Message({ message }: MessageProps) {
           isUser ? "bg-primary text-primary-foreground" : "bg-secondary"
         )}
       >
-        {contentType === "design" ? (
+        {contentType === "design_and_products" ? (
+          <div className="space-y-4">
+            <p className="text-sm mb-2">{parsedContent}</p>
+            {jsonContent.design && (
+              <>
+                <p className="text-sm mb-2">Here's your initial design:</p>
+                <AspectRatio ratio={1}>
+                  <img
+                    src={jsonContent.design.imageUrl}
+                    alt="Generated design"
+                    className="rounded-md object-cover w-full h-full"
+                  />
+                </AspectRatio>
+                {analysis && (
+                  <div className="mt-4 space-y-2">
+                    <h4 className="font-medium">Design Analysis:</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {analysis.imageAnalysis.description}
+                    </p>
+                    {analysis.suggestions && (
+                      <>
+                        <h4 className="font-medium mt-3">Suggestions:</h4>
+                        <ul className="text-sm text-muted-foreground list-disc pl-4">
+                          {Object.entries(analysis.suggestions).map(([key, value]) => (
+                            <li key={key}>{value}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+            {products && products.length > 0 && (
+              <div className="mt-6">
+                <h4 className="font-medium mb-3">Available Products:</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {products.map((product, index) => (
+                    <ProductPreview
+                      key={index}
+                      imageUrl={product.images[0]}
+                      productName={product.title}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : contentType === "design" ? (
           <div className="space-y-4">
             <p className="text-sm mb-2">Here's your generated design:</p>
             <AspectRatio ratio={1}>
