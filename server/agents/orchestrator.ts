@@ -36,7 +36,7 @@ export class OrchestratorAgent {
 
       // Get initial parsing of user intent from OpenAI
       const aiResponse = await generateChatResponse([{
-        role: "system",
+        role: "user",
         content: `Parse this message into product details and design content. Respond with JSON:
         {
           "type": "parse",
@@ -96,7 +96,7 @@ export class OrchestratorAgent {
     try {
       // Analyze if the user is approving or requesting changes
       const approvalResponse = await generateChatResponse([{
-        role: "system",
+        role: "user",
         content: `Determine if the user is approving the design or requesting changes. Consider the context of the current design when analyzing modifications. Respond with JSON:
         {
           "type": "design_feedback",
@@ -114,9 +114,7 @@ export class OrchestratorAgent {
 
         // Get the stored product details and search for matching products
         const productDetails = this.context.get("currentProductDetails");
-        const productResponse = await this.productAgent.handleSearch(
-          `${productDetails.type} ${productDetails.color || ''}`
-        );
+        const productResponse = await this.productAgent.handleSearch(productDetails);
 
         // Create a combined response with both the final design and product options
         return {

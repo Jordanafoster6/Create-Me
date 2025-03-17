@@ -1,15 +1,22 @@
-import { getProducts, getProduct } from "../services/printify";
+import { getBlueprints } from "../services/printify";
+
+interface ProductDetails {
+  type?: string;
+  color?: string;
+  size?: string;
+  material?: string;
+}
 
 export class ProductResearchAgent {
-  async handleSearch(query: string): Promise<string> {
+  async handleSearch(productDetails: ProductDetails): Promise<string> {
     try {
-      const products = await getProducts();
+      const blueprints = await getBlueprints();
 
-      // Filter and rank products based on query
-      const rankedProducts = this.rankProducts(products, query);
+      // Filter and rank blueprints based on product details
+      const rankedBlueprints = this.rankBlueprints(blueprints.data, productDetails);
 
       return JSON.stringify({
-        products: rankedProducts.slice(0, 5),
+        products: rankedBlueprints.slice(0, 5),
         status: "success"
       });
     } catch (error: unknown) {
@@ -18,24 +25,66 @@ export class ProductResearchAgent {
     }
   }
 
-  private rankProducts(products: any[], query: string) {
-    // Simple ranking based on text matching
-    return products.sort((a, b) => {
-      const aScore = this.calculateRelevance(a, query);
-      const bScore = this.calculateRelevance(b, query);
-      return bScore - aScore;
-    });
-  }
+  private rankBlueprints(blueprints: any[], productDetails: ProductDetails) {
+    // Create a mapping of common product type variations
+    const productTypeMap: { [key: string]: string[] } = {
+      'tshirt': ['t-shirt', 'tee', 'shirt'],
+      'hoodie': ['hooded', 'sweatshirt', 'hood'],
+      'mug': ['cup', 'coffee mug', 'drink'],
+      'poster': ['print', 'wall art', 'artwork'],
+    };
 
-  private calculateRelevance(product: any, query: string): number {
-    const searchTerms = query.toLowerCase().split(' ');
-    let score = 0;
+    return blueprints
+      .map(blueprint => {
+        let score = 0;
+        const title = blueprint.title.toLowerCase();
+        const description = blueprint.description?.toLowerCase() || '';
 
-    searchTerms.forEach(term => {
-      if (product.title.toLowerCase().includes(term)) score += 2;
-      if (product.description.toLowerCase().includes(term)) score += 1;
-    });
+        // Check product type match
+        if (productDetails.type) {
+          const searchType = productDetails.type.toLowerCase();
+          // Direct match
+          if (title.includes(searchType) || description.includes(searchType)) {
+            score += 3;
+          }
+          // Check variations
+          for (const [baseType, variations] of Object.entries(productTypeMap)) {
+            if (searchType.includes(baseType)) {
+              variations.forEach(variant => {
+                if (title.includes(variant) || description.includes(variant)) {
+                  score += 2;
+                }
+              });
+            }
+          }
+        }
 
-    return score;
+        // Check color availability if specified
+        if (productDetails.color && blueprint.variants) {
+          const color = productDetails.color.toLowerCase();
+          blueprint.variants.forEach((variant: any) => {
+            if (variant.options?.color?.toLowerCase().includes(color)) {
+              score += 2;
+            }
+          });
+        }
+
+        // Check material if specified
+        if (productDetails.material && blueprint.variants) {
+          const material = productDetails.material.toLowerCase();
+          blueprint.variants.forEach((variant: any) => {
+            if (variant.options?.material?.toLowerCase().includes(material)) {
+              score += 2;
+            }
+          });
+        }
+
+        return {
+          ...blueprint,
+          matchScore: score
+        };
+      })
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .map(({ matchScore, ...blueprint }) => blueprint); // Remove the score before returning
   }
 }
