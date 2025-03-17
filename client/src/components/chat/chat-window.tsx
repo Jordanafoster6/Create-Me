@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -7,6 +7,14 @@ import { Message } from "./message";
 import { ChatMessage } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+
+interface ChatResponse {
+  type: string;
+  message?: string;
+  imageUrl?: string;
+  products?: any[];
+  status?: string;
+}
 
 export function ChatWindow() {
   const [input, setInput] = useState("");
@@ -22,7 +30,29 @@ export function ChatWindow() {
       return response.json();
     },
     onSuccess: (data) => {
-      setMessages(prev => [...prev, data]);
+      // Parse the assistant's response if it's JSON
+      let assistantMessage: ChatMessage = {
+        role: "assistant",
+        content: data.content
+      };
+
+      try {
+        const parsedContent = JSON.parse(data.content) as ChatResponse;
+        if (parsedContent.type === "chat" && parsedContent.message) {
+          assistantMessage.content = parsedContent.message;
+        } else if (parsedContent.type === "design" && parsedContent.imageUrl) {
+          assistantMessage.content = `Generated design: ${parsedContent.imageUrl}`;
+        } else if (parsedContent.type === "product_search" && parsedContent.products) {
+          assistantMessage.content = `Found ${parsedContent.products.length} products.`;
+        }
+      } catch (error) {
+        console.error("Failed to parse assistant response:", error);
+      }
+
+      setMessages(prev => [...prev, 
+        { role: "user", content: input },
+        assistantMessage
+      ]);
       queryClient.invalidateQueries({ queryKey: ['/api/chat'] });
     },
     onError: (error: Error) => {
@@ -37,13 +67,6 @@ export function ChatWindow() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-
-    const userMessage: ChatMessage = {
-      content: input,
-      role: "user"
-    };
-
-    setMessages(prev => [...prev, userMessage]);
     sendMessage.mutate(input);
     setInput("");
   };
