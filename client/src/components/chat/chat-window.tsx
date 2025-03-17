@@ -23,37 +23,47 @@ export function ChatWindow() {
 
   const sendMessage = useMutation({
     mutationFn: async (content: string) => {
-      const response = await apiRequest("POST", "/api/chat", {
+      const userMessage: ChatMessage = {
         content,
         role: "user"
-      });
+      };
+      const response = await apiRequest("POST", "/api/chat", userMessage);
       return response.json();
     },
-    onSuccess: (data) => {
-      // Parse the assistant's response if it's JSON
-      let assistantMessage: ChatMessage = {
-        role: "assistant",
-        content: data.content
-      };
-
+    onSuccess: (data: ChatMessage) => {
       try {
-        const parsedContent = JSON.parse(data.content) as ChatResponse;
-        if (parsedContent.type === "chat" && parsedContent.message) {
-          assistantMessage.content = parsedContent.message;
-        } else if (parsedContent.type === "design" && parsedContent.imageUrl) {
-          assistantMessage.content = `Generated design: ${parsedContent.imageUrl}`;
-        } else if (parsedContent.type === "product_search" && parsedContent.products) {
-          assistantMessage.content = `Found ${parsedContent.products.length} products.`;
-        }
-      } catch (error) {
-        console.error("Failed to parse assistant response:", error);
-      }
+        // Add user message first
+        const userMessage: ChatMessage = {
+          role: "user",
+          content: input
+        };
 
-      setMessages(prev => [...prev, 
-        { role: "user", content: input },
-        assistantMessage
-      ]);
-      queryClient.invalidateQueries({ queryKey: ['/api/chat'] });
+        // Handle assistant response
+        let assistantContent = data.content;
+        try {
+          const parsedResponse = JSON.parse(data.content) as ChatResponse;
+          if (parsedResponse.type === "chat" && parsedResponse.message) {
+            assistantContent = parsedResponse.message;
+          }
+        } catch (error) {
+          console.warn("Could not parse assistant response as JSON:", error);
+        }
+
+        const assistantMessage: ChatMessage = {
+          role: "assistant",
+          content: assistantContent
+        };
+
+        setMessages(prev => [...prev, userMessage, assistantMessage]);
+        queryClient.invalidateQueries({ queryKey: ['/api/chat'] });
+      } catch (error) {
+        console.error("Error processing chat response:", error);
+        toast({
+          title: "Error processing response",
+          description: "There was a problem displaying the message",
+          variant: "destructive"
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
