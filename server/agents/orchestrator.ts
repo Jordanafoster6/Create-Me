@@ -34,6 +34,11 @@ export class OrchestratorAgent {
         return await this.handleDesignRefinement(message);
       }
 
+      // If we're in product selection mode, handle that separately
+      if (this.context.get("productSelectionMode")) {
+        return await this.handleProductSelection(message);
+      }
+
       // Get initial parsing of user intent from OpenAI
       const aiResponse = await generateChatResponse([{
         role: "user",
@@ -111,10 +116,12 @@ export class OrchestratorAgent {
         // Design is approved, now we can search for matching products
         this.context.set("designRefinementMode", false);
         this.context.set("designApproved", true);
+        this.context.set("productSelectionMode", true);
 
         // Get the stored product details and search for matching products
         const productDetails = this.context.get("currentProductDetails");
         const productResponse = await this.productAgent.handleSearch(productDetails);
+        const { products, hasMore } = JSON.parse(productResponse);
 
         // Create a combined response with both the final design and product options
         return {
@@ -122,8 +129,8 @@ export class OrchestratorAgent {
           content: JSON.stringify({
             type: "design_and_products",
             design: JSON.parse(this.context.get("currentDesign")),
-            products: JSON.parse(productResponse),
-            message: "Perfect! Now that we have your design finalized, let's choose the right product for it. I've found some products that match your requirements. Please take a look at the options below and let me know which one you'd prefer. You can refer to them by their name or number in the list."
+            products: products,
+            message: `Perfect! Now that we have your design finalized, let's choose the right product for it. I've found some products that match your requirements. Please take a look at the options below and let me know which one you'd prefer. You can refer to them by their name or number in the list.${hasMore ? "\n\nIf you don't see what you're looking for, just let me know and I can show you more options." : ""}`
           })
         };
       } else {
@@ -148,6 +155,73 @@ export class OrchestratorAgent {
     } catch (error: any) {
       console.error('Design Refinement Error:', error);
       throw new Error(`Design Refinement Error: ${error?.message || 'Unknown error'}`);
+    }
+  }
+
+  private async handleProductSelection(message: ChatMessage): Promise<ChatMessage> {
+    try {
+      // First, check if the user wants to see more products
+      const moreProductsResponse = await generateChatResponse([{
+        role: "user",
+        content: `Determine if the user is requesting to see more product options. Respond with JSON:
+        {
+          "type": "product_selection",
+          "wantsMore": boolean,
+          "selectedProduct": number or null
+        }`
+      }, message]);
+
+      const parsedResponse = JSON.parse(moreProductsResponse);
+
+      if (parsedResponse.wantsMore) {
+        // User wants to see more products
+        const productDetails = this.context.get("currentProductDetails");
+        const productResponse = await this.productAgent.handleSearch(productDetails, false);
+        const { products, hasMore, totalRemaining } = JSON.parse(productResponse);
+
+        if (products.length === 0) {
+          return {
+            role: "assistant",
+            content: JSON.stringify({
+              type: "chat",
+              message: "I've shown you all the available products that match your requirements. Would you like to try a different type of product or modify your search?"
+            })
+          };
+        }
+
+        return {
+          role: "assistant",
+          content: JSON.stringify({
+            type: "design_and_products",
+            design: JSON.parse(this.context.get("currentDesign")),
+            products: products,
+            message: `Here are some more options that match your requirements. ${hasMore ? `\n\nThere are ${totalRemaining} more options available if none of these are quite right.` : "\n\nThese are the last available options that match your requirements."}`
+          })
+        };
+      } else if (parsedResponse.selectedProduct !== null) {
+        // User has selected a product, move to configuration
+        this.context.set("productSelectionMode", false);
+        // TODO: Implement product configuration flow
+        return {
+          role: "assistant",
+          content: JSON.stringify({
+            type: "chat",
+            message: "Great choice! Let's configure your selected product with the design we created."
+          })
+        };
+      }
+
+      // If we're here, the user's response wasn't clear
+      return {
+        role: "assistant",
+        content: JSON.stringify({
+          type: "chat",
+          message: "I'm not sure if you'd like to see more options or if you've chosen a product. Could you please clarify if you'd like to see more products, or let me know which product you'd like to use?"
+        })
+      };
+    } catch (error: any) {
+      console.error('Product Selection Error:', error);
+      throw new Error(`Product Selection Error: ${error?.message || 'Unknown error'}`);
     }
   }
 

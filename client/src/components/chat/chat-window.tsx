@@ -19,17 +19,20 @@ interface ChatResponse {
 
 export function ChatWindow() {
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([{
-    role: "assistant",
-    content: "Hello! I'm your AI product customization assistant. How can I help you create something unique today?"
-  }]);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      role: "assistant",
+      content:
+        "Hello! I'm your AI product customization assistant. How can I help you create something unique today?",
+    },
+  ]);
   const { toast } = useToast();
 
   const sendMessage = useMutation({
     mutationFn: async (messageContent: string) => {
       const userMessage: ChatMessage = {
         content: messageContent,
-        role: "user"
+        role: "user",
       };
       const response = await apiRequest("POST", "/api/chat", userMessage);
       return response.json();
@@ -48,18 +51,18 @@ export function ChatWindow() {
 
         const assistantMessage: ChatMessage = {
           role: "assistant",
-          content: assistantContent
+          content: assistantContent,
         };
 
-        setMessages(prev => [...prev, assistantMessage]);
+        setMessages((prev) => [...prev, assistantMessage]);
 
-        queryClient.invalidateQueries({ queryKey: ['/api/chat'] });
+        queryClient.invalidateQueries({ queryKey: ["/api/chat"] });
       } catch (error) {
         console.error("Error processing chat response:", error);
         toast({
           title: "Error processing response",
           description: "There was a problem displaying the message",
-          variant: "destructive"
+          variant: "destructive",
         });
       }
     },
@@ -67,9 +70,9 @@ export function ChatWindow() {
       toast({
         title: "Error sending message",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
       });
-    }
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -78,9 +81,9 @@ export function ChatWindow() {
 
     const userMessage: ChatMessage = {
       role: "user",
-      content: input
+      content: input,
     };
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
 
     sendMessage.mutate(input);
     setInput("");
@@ -102,8 +105,7 @@ export function ChatWindow() {
       </ScrollArea>
 
       <div className="p-4 border-t">
-        <QuickActions onAction={setInput} />
-        <form onSubmit={handleSubmit} className="flex gap-2">
+        <form onSubmit={handleSubmit} className="flex gap-2 mb-3">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -111,7 +113,7 @@ export function ChatWindow() {
             className="flex-1"
             disabled={sendMessage.isPending}
           />
-          <Button 
+          <Button
             type="submit"
             disabled={sendMessage.isPending}
             className="bg-primary hover:bg-primary/90"
@@ -119,6 +121,7 @@ export function ChatWindow() {
             {sendMessage.isPending ? "Sending..." : "Send"}
           </Button>
         </form>
+        <QuickActions onAction={setInput} />
       </div>
     </div>
   );

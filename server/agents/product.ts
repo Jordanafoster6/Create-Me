@@ -8,30 +8,51 @@ interface ProductDetails {
 }
 
 export class ProductResearchAgent {
-  async handleSearch(productDetails: ProductDetails): Promise<string> {
+  private shownProducts: Set<string> = new Set();
+  private rankedBlueprints: any[] = [];
+  private BATCH_SIZE = 3;
+
+  async handleSearch(productDetails: ProductDetails, resetSearch: boolean = true): Promise<string> {
     try {
       console.log('Searching with product details:', productDetails);
-      const blueprintsResponse = await getBlueprints();
-      console.log('Received blueprints response:', blueprintsResponse);
 
-      // Ensure we have valid data before proceeding
-      if (!blueprintsResponse || !blueprintsResponse.data) {
-        console.error('Invalid blueprints response:', blueprintsResponse);
-        throw new Error('Invalid response from Printify blueprints API');
+      // Only fetch and rank products if this is a new search or reset was requested
+      if (resetSearch || this.rankedBlueprints.length === 0) {
+        const blueprintsResponse = await getBlueprints();
+        console.log('Received blueprints response:', blueprintsResponse);
+
+        // Ensure we have valid data before proceeding
+        if (!blueprintsResponse || !blueprintsResponse.data) {
+          console.error('Invalid blueprints response:', blueprintsResponse);
+          throw new Error('Invalid response from Printify blueprints API');
+        }
+
+        // Get the array of blueprints from the response
+        const blueprints = Array.isArray(blueprintsResponse.data) ? 
+          blueprintsResponse.data : 
+          [blueprintsResponse.data];
+
+        // Reset shown products and ranked blueprints
+        this.shownProducts.clear();
+        this.rankedBlueprints = this.rankBlueprints(blueprints, productDetails);
+        console.log('Ranked blueprints:', this.rankedBlueprints);
       }
 
-      // Get the array of blueprints from the response
-      const blueprints = Array.isArray(blueprintsResponse.data) ? 
-        blueprintsResponse.data : 
-        [blueprintsResponse.data];
+      // Get next batch of unshown products
+      const nextBatch = this.rankedBlueprints
+        .filter(product => !this.shownProducts.has(product.id))
+        .slice(0, this.BATCH_SIZE);
 
-      // Filter and rank blueprints based on product details
-      const rankedBlueprints = this.rankBlueprints(blueprints, productDetails);
+      // Mark these products as shown
+      nextBatch.forEach(product => this.shownProducts.add(product.id));
 
-      console.log('Ranked blueprints:', rankedBlueprints);
+      // Calculate if more products are available
+      const remainingProducts = this.rankedBlueprints.length - this.shownProducts.size;
 
       return JSON.stringify({
-        products: rankedBlueprints.slice(0, 5),
+        products: nextBatch,
+        hasMore: remainingProducts > 0,
+        totalRemaining: remainingProducts,
         status: "success"
       });
     } catch (error: unknown) {

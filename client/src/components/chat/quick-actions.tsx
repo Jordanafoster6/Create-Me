@@ -8,20 +8,24 @@ export function QuickActions({ onAction }: QuickActionsProps) {
   const actions = [
     {
       label: "Create Product",
-      text: "I want a black t-shirt with a cartoonish beagle on it"
+      text: "I want a black t-shirt with a cartoonish beagle on it",
     },
     {
       label: "Refine Design",
-      text: "make it jumping and a little less cartoonish"
+      text: "make it jumping and a little less cartoonish",
+    },
+    {
+      label: "Approve Design",
+      text: "looks good!",
     },
     {
       label: "Pick Product",
-      text: "I like the 3rd product best"
-    }
+      text: "I like the 3rd product best",
+    },
   ];
 
   return (
-    <div className="flex flex-wrap gap-2 mb-4">
+    <div className="flex flex-wrap gap-2">
       {actions.map((action) => (
         <Button
           key={action.label}
