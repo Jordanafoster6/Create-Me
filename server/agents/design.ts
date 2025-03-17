@@ -14,6 +14,7 @@ export class DesignAgent {
         type: "design",
         imageUrl,
         analysis,
+        message: "I've created a design based on your description. How does this look? We can make adjustments if needed.",
         status: "success"
       });
     } catch (error: unknown) {
@@ -27,9 +28,14 @@ export class DesignAgent {
       // Apply modifications using DALL-E
       const newImageUrl = await generateImage(modifications);
 
+      // Analyze the modified image
+      const analysis = await analyzeImage(newImageUrl);
+
       return JSON.stringify({
         type: "design",
         imageUrl: newImageUrl,
+        analysis,
+        message: "I've updated the design based on your feedback. Is this more what you had in mind?",
         status: "success"
       });
     } catch (error: unknown) {

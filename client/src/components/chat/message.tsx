@@ -21,7 +21,6 @@ export function Message({ message }: MessageProps) {
       jsonContent = JSON.parse(message.content);
       if (jsonContent.type === "design") {
         contentType = "design";
-        parsedContent = jsonContent.imageUrl;
         if (jsonContent.analysis) {
           try {
             analysis = JSON.parse(jsonContent.analysis) as DesignAnalysis;
@@ -61,7 +60,7 @@ export function Message({ message }: MessageProps) {
             )}
             <AspectRatio ratio={1}>
               <img
-                src={parsedContent}
+                src={jsonContent.imageUrl}
                 alt="Generated design"
                 className="rounded-md object-cover w-full h-full"
               />
