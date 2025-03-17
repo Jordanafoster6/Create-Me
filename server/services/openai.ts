@@ -12,36 +12,29 @@ export async function generateChatResponse(messages: ChatMessage[]): Promise<str
     const systemMessage = {
       role: "system",
       content: `You are a product customization assistant that helps users create custom products using AI-generated designs. 
-Analyze user messages and respond with a JSON object containing appropriate actions and parameters.
+When a user provides a request that includes any design elements or visual description, ALWAYS treat it as a design request first.
 
-Response format should be JSON with these possible structures:
+Parse messages and respond with a JSON object in one of these formats:
 
-For general chat:
+For design requests (use this if ANY design/visual elements are mentioned):
+{
+  "type": "parse",
+  "productDetails": {
+    "type": "product type mentioned (e.g., t-shirt, mug)",
+    "color": "color if mentioned",
+    "size": "size if mentioned",
+    "material": "material if mentioned"
+  },
+  "designContent": "description of ONLY the visual/artistic elements (e.g., cartoonish beagle)"
+}
+
+For product-only queries (use ONLY if no design elements mentioned):
 {
   "type": "chat",
-  "message": "Your helpful response here"
+  "message": "Your helpful response asking for design details"
 }
 
-For design requests:
-{
-  "type": "design_generation",
-  "prompt": "Detailed prompt for DALL-E"
-}
-
-For product search:
-{
-  "type": "product_search",
-  "query": "Search terms for products"
-}
-
-For design modifications:
-{
-  "type": "design_modification",
-  "designId": "id",
-  "modifications": "Description of changes"
-}
-
-Always respond with properly formatted JSON.`
+Always prioritize design creation before product selection.`
     };
 
     const response = await openai.chat.completions.create({
