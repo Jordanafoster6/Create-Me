@@ -18,7 +18,10 @@ interface ChatResponse {
 
 export function ChatWindow() {
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([{
+    role: "assistant",
+    content: "Hello! I'm your AI product customization assistant. How can I help you create something unique today?"
+  }]);
   const { toast } = useToast();
 
   const sendMessage = useMutation({
@@ -32,12 +35,6 @@ export function ChatWindow() {
     },
     onSuccess: (data: ChatMessage) => {
       try {
-        // Add user message first
-        const userMessage: ChatMessage = {
-          role: "user",
-          content: input
-        };
-
         // Handle assistant response
         let assistantContent = data.content;
         try {
@@ -54,7 +51,11 @@ export function ChatWindow() {
           content: assistantContent
         };
 
-        setMessages(prev => [...prev, userMessage, assistantMessage]);
+        setMessages(prev => [...prev, 
+          { role: "user", content: input },
+          assistantMessage
+        ]);
+
         queryClient.invalidateQueries({ queryKey: ['/api/chat'] });
       } catch (error) {
         console.error("Error processing chat response:", error);
