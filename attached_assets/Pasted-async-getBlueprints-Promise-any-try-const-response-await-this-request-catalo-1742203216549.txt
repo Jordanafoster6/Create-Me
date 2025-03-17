@@ -1,0 +1,152 @@
+async getBlueprints(): Promise<any[]> {
+    try {
+      const response = await this.request("/catalog/blueprints.json");
+      console.log("Blueprints");
+      console.log(response);
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error("Failed to fetch blueprints:", error);
+      throw error;
+    }
+  }
+
+  async getProvidersForBlueprint(blueprintId: string): Promise<any[]> {
+    try {
+      const response = await this.request(
+        `/catalog/blueprints/${blueprintId}/print_providers.json`,
+      );
+      console.log("Providers for blueprint");
+      console.log(response);
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error(
+        `Failed to fetch providers for blueprint ${blueprintId}:`,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  async getVariantsForBlueprint(
+    blueprintId: string,
+    providerId: string,
+  ): Promise<any> {
+    try {
+      const response = await this.request(
+        `/catalog/blueprints/${blueprintId}/print_providers/${providerId}/variants.json`,
+      );
+      console.log("Variants for blueprints provider");
+      console.log(response);
+      return response && response.variants ? response : { variants: [] };
+    } catch (error) {
+      console.error(
+        `Failed to fetch variants for blueprint ${blueprintId} and provider ${providerId}:`,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  async createProduct(product: any): Promise<any> {
+    const shopId = process.env.PRINTIFY_SHOP_ID;
+    // console.log("Product Parameter Object: ", JSON.stringify(product, null, 2));
+
+    try {
+      // Fetch image from URL and convert to base64
+      console.log("Fetching image from URL for upload");
+      const response = await axios.get(product.imageUrl, {
+        responseType: "arraybuffer",
+      });
+      const base64Image = Buffer.from(response.data, "binary").toString(
+        "base64",
+      );
+
+      // Determine file extension from content type
+      const contentType = response.headers["content-type"];
+      let extension = "jpg";
+      if (contentType.includes("png")) extension = "png";
+      else if (contentType.includes("jpeg") || contentType.includes("jpg"))
+        extension = "jpg";
+
+      // Upload image to Printify
+      console.log("Uploading image to Printify");
+      const uploadResponse = await this.request(
+        `/uploads/images.json`,
+        "POST",
+        {
+          file_name: `image_${Date.now()}.${extension}`,
+          contents: base64Image,
+        },
+      );
+
+      const imageId = uploadResponse.id;
+      console.log("Image uploaded successfully, got ID:", imageId);
+
+      // Ensure all numeric fields are actually numbers
+      const blueprint_id = Number(product.blueprintId);
+      const print_provider_id = Number(product.printProviderId);
+
+      // Fetch variant details for reference
+      const blueprintVariants = await this.getVariantsForBlueprint(
+        product.blueprintId,
+        product.printProviderId,
+      );
+
+      // Process variants with their titles from the reference data
+      const payloadVariants = product.variants.map((variant: any) => {
+        const completeVariantInfo = blueprintVariants.variants.find(
+          (v: any) => v.id === variant.id,
+        );
+        return {
+          id: variant.id,
+          price: variant.price,
+          is_enabled: true,
+          title: completeVariantInfo?.title || `Variant ${variant.id}`,
+        };
+      });
+
+      // Create Printify Product
+      const printifyProduct = await this.request(
+        `/shops/${shopId}/products.json`,
+        "POST",
+        {
+          title: product.title,
+          description: product.description,
+          blueprint_id,
+          print_provider_id,
+          variants: payloadVariants,
+          print_areas: [
+            {
+              variant_ids: payloadVariants.map((v) => v.id),
+              placeholders: [
+                {
+                  position: "front",
+                  images: [
+                    {
+                      id: imageId,
+                      x: 0.5,
+                      y: 0.5,
+                      scale: 1.0,
+                      angle: 0,
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      );
+
+      return printifyProduct;
+    } catch (error: any) {
+      console.error("Failed to create Printify product:", error);
+      if (error.response) {
+        console.error("Error Response:", {
+          status: error.response.status,
+          data: error.response.data,
+          headers: error.response.headers,
+        });
+      }
+      throw error;
+    }
+  }
