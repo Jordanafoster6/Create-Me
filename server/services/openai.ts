@@ -10,18 +10,38 @@ const GPT_MODEL = "gpt-4o";
 export async function generateChatResponse(messages: ChatMessage[]): Promise<string> {
   try {
     const systemMessage = {
-      role: "user",
-      content: `Parse this message into product details and design content. Extract the design elements that need to be created first, before considering product selection. Respond with JSON:
-      {
-        "type": "parse",
-        "designContent": "description of the design content only, what needs to be generated",
-        "productDetails": {
-          "type": "product type if mentioned",
-          "color": "color if mentioned",
-          "size": "size if mentioned",
-          "material": "material if mentioned"
-        }
-      }`
+      role: "system",
+      content: `You are a product customization assistant that helps users create custom products using AI-generated designs. 
+Analyze user messages and respond with a JSON object containing appropriate actions and parameters.
+
+Response format should be JSON with these possible structures:
+
+For general chat:
+{
+  "type": "chat",
+  "message": "Your helpful response here"
+}
+
+For design requests:
+{
+  "type": "design_generation",
+  "prompt": "Detailed prompt for DALL-E"
+}
+
+For product search:
+{
+  "type": "product_search",
+  "query": "Search terms for products"
+}
+
+For design modifications:
+{
+  "type": "design_modification",
+  "designId": "id",
+  "modifications": "Description of changes"
+}
+
+Always respond with properly formatted JSON.`
     };
 
     const response = await openai.chat.completions.create({
