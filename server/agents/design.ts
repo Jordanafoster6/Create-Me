@@ -14,7 +14,7 @@ export class DesignAgent {
    * Generates a new design based on user prompt
    * @param prompt User's description of desired design
    * @returns Promise<string> JSON string containing design details
-   * @throws Error if design generation or analysis fails
+   * @throws Error if design generation fails
    */
   async generateDesign(prompt: string): Promise<string> {
     try {
@@ -27,8 +27,13 @@ export class DesignAgent {
       // Generate image using DALL-E
       const imageUrl = await generateImage(prompt);
 
-      // Analyze the generated image
-      const analysis = await analyzeImage(imageUrl);
+      // Try to get analysis, but don't fail if it's not available
+      let analysis: string | undefined;
+      try {
+        analysis = await analyzeImage(imageUrl);
+      } catch (error) {
+        logger.warn("Failed to analyze image, continuing without analysis", { error });
+      }
 
       const response: DesignResponse = {
         type: "design",
@@ -42,7 +47,7 @@ export class DesignAgent {
       // Validate response format
       const validatedResponse = DesignResponseSchema.parse(response);
 
-      logger.info("Successfully generated and analyzed design");
+      logger.info("Successfully generated design");
       return JSON.stringify(validatedResponse);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -59,7 +64,7 @@ export class DesignAgent {
    * @param previousDesign JSON string containing previous design details
    * @param modifications User's requested modifications
    * @returns Promise<string> JSON string containing modified design details
-   * @throws Error if design modification or analysis fails
+   * @throws Error if design modification fails
    */
   async modifyDesign(previousDesign: string, modifications: string): Promise<string> {
     try {
@@ -78,8 +83,13 @@ Keep the core elements while applying these modifications.`;
       // Generate new image with combined context
       const newImageUrl = await generateImage(this.currentPrompt);
 
-      // Analyze the new image
-      const analysis = await analyzeImage(newImageUrl);
+      // Try to get analysis, but don't fail if it's not available
+      let analysis: string | undefined;
+      try {
+        analysis = await analyzeImage(newImageUrl);
+      } catch (error) {
+        logger.warn("Failed to analyze modified image, continuing without analysis", { error });
+      }
 
       const response: DesignResponse = {
         type: "design",
@@ -93,7 +103,7 @@ Keep the core elements while applying these modifications.`;
       // Validate response format
       const validatedResponse = DesignResponseSchema.parse(response);
 
-      logger.info("Successfully modified and analyzed design");
+      logger.info("Successfully modified design");
       return JSON.stringify(validatedResponse);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

@@ -16,7 +16,7 @@ const GPT_MODEL = "gpt-4o";
  * Generates a chat response using OpenAI's GPT model
  * @param messages Array of previous chat messages for context
  * @returns Promise<string> Generated response content
- * @throws Error if API call fails or returns invalid response
+ * @throws Error if API call fails
  */
 export async function generateChatResponse(messages: ChatMessage[]): Promise<string> {
   try {
@@ -112,10 +112,9 @@ export async function generateImage(prompt: string): Promise<string> {
 /**
  * Analyzes an image using GPT-4 Vision
  * @param imageUrl URL of the image to analyze
- * @returns Promise<string> JSON string containing analysis results
- * @throws Error if analysis fails
+ * @returns Promise<string> JSON string containing analysis results or undefined if analysis fails
  */
-export async function analyzeImage(imageUrl: string): Promise<string> {
+export async function analyzeImage(imageUrl: string): Promise<string | undefined> {
   try {
     const response = await openai.chat.completions.create({
       model: GPT_MODEL,
@@ -137,15 +136,18 @@ export async function analyzeImage(imageUrl: string): Promise<string> {
       response_format: { type: "json_object" }
     });
 
-    if (!response.choices[0].message.content) {
-      throw new Error("Empty analysis from OpenAI");
+    const content = response.choices[0].message.content;
+    if (!content) {
+      logger.warn("Empty analysis from OpenAI, skipping analysis");
+      return undefined;
     }
 
     logger.info("Successfully analyzed image");
-    return response.choices[0].message.content;
+    return content;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     logger.error("Image Analysis Error", { error: errorMessage });
-    throw new Error(`Image Analysis Error: ${errorMessage}`);
+    logger.warn("Continuing without image analysis");
+    return undefined;
   }
 }
