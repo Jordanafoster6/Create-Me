@@ -181,6 +181,7 @@ export class OrchestratorAgent {
 
         const response: OrchestratorResponse = {
           type: "design_and_products",
+          design: JSON.parse(this.context.get("currentDesign")),
           products,
           hasMore,
           status: "selecting",
@@ -192,7 +193,6 @@ export class OrchestratorAgent {
           content: JSON.stringify(OrchestratorResponseSchema.parse(response))
         };
       } else {
-        // Modify the design based on feedback
         const newDesign = await this.designAgent.modifyDesign(
           this.context.get("currentDesign"),
           feedback.changes
@@ -227,13 +227,6 @@ export class OrchestratorAgent {
     }
   }
 
-  /**
-   * Handles the product selection phase of the conversation
-   * Uses array index-based selection for reliable product identification
-   * 
-   * @param message User's product selection or request for more options
-   * @returns Promise<ChatMessage> Response with either more products or final configuration
-   */
   private async handleProductSelection(message: ChatMessage): Promise<ChatMessage> {
     try {
       const selectionResponse = await generateChatResponse([
@@ -253,7 +246,6 @@ export class OrchestratorAgent {
       logger.info("Processing product selection", { selection });
 
       if (selection.wantsMore) {
-        // Handle request for more product options
         const productDetails = this.context.get("currentProductDetails");
         const productResponse = await this.productAgent.handleSearch(productDetails, false);
         const { products, hasMore, totalRemaining } = JSON.parse(productResponse);
@@ -272,6 +264,7 @@ export class OrchestratorAgent {
 
         const response: OrchestratorResponse = {
           type: "design_and_products",
+          design: JSON.parse(this.context.get("currentDesign")),
           products,
           hasMore,
           status: "selecting",
