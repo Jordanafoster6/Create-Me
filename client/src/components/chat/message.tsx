@@ -15,6 +15,7 @@ export function Message({ message }: MessageProps) {
   if (!isUser && message.content) {
     try {
       response = JSON.parse(message.content);
+      console.log("Parsed message response:", response); // Add logging
     } catch (error) {
       console.warn("Message is not JSON:", message.content);
     }
@@ -71,7 +72,7 @@ export function Message({ message }: MessageProps) {
                     {(() => {
                       try {
                         const analysis: DesignAnalysis = JSON.parse(
-                          response.type === "design" ? response.analysis : response.design.analysis
+                          response.type === "design" ? response.analysis! : response.design.analysis!
                         );
                         if (!analysis?.imageAnalysis?.description) return null;
 

@@ -79,7 +79,6 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
             },
             variant_ids: product.variants?.map(v => v.id) || [],
             metadata: {
-              product_type: product.type,
               brand: product.brand,
               model: product.model
             }
