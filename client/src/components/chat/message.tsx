@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { ChatMessage, DesignAnalysis, DesignResponse } from "@shared/schema";
+import { ChatMessage, DesignAnalysis, ProductResponse } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { ProductPreview } from "@/components/product/preview";
@@ -13,7 +13,7 @@ export function Message({ message }: MessageProps) {
   let parsedContent = message.content;
   let contentType = "text";
   let analysis: DesignAnalysis | null = null;
-  let products = null;
+  let products: ProductResponse[] | null = null;
   let jsonContent: any = null;
 
   if (!isUser && message.content) {
@@ -98,7 +98,7 @@ export function Message({ message }: MessageProps) {
               <div className="mt-6">
                 <h4 className="font-medium mb-3">Available Products:</h4>
                 <div className="grid grid-cols-2 gap-4">
-                  {products.map((product: any, index: number) => (
+                  {products.map((product, index) => (
                     <ProductPreview
                       key={index}
                       imageUrl={product.images[0]}

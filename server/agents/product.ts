@@ -1,4 +1,5 @@
 import { getBlueprints } from "../services/printify";
+import { PrintifyBlueprint, ProductResponse } from "@shared/schema";
 
 interface ProductDetails {
   type?: string;
@@ -9,7 +10,7 @@ interface ProductDetails {
 
 export class ProductResearchAgent {
   private shownProducts: Set<string> = new Set();
-  private rankedBlueprints: any[] = [];
+  private rankedBlueprints: PrintifyBlueprint[] = [];
   private BATCH_SIZE = 3;
 
   async handleSearch(productDetails: ProductDetails, resetSearch: boolean = true): Promise<string> {
@@ -28,8 +29,8 @@ export class ProductResearchAgent {
         }
 
         // Get the array of blueprints from the response
-        const blueprints = Array.isArray(blueprintsResponse.data) ? 
-          blueprintsResponse.data : 
+        const blueprints = Array.isArray(blueprintsResponse.data) ?
+          blueprintsResponse.data :
           [blueprintsResponse.data];
 
         // Reset shown products and ranked blueprints
@@ -40,18 +41,12 @@ export class ProductResearchAgent {
 
       // Get next batch of unshown products
       const nextBatch = this.rankedBlueprints
-        .filter(product => !this.shownProducts.has(product.id))
+        .filter(product => !this.shownProducts.has(product.id.toString()))
         .slice(0, this.BATCH_SIZE)
-        .map(blueprint => ({
-          ...blueprint,
-          // Ensure we always have an images array with at least one item
-          images: blueprint.images || 
-                 (blueprint.image ? [blueprint.image] : null) ||
-                 (blueprint.preview ? [blueprint.preview] : [])
-        }));
+        .map(blueprint => this.transformToProductResponse(blueprint));
 
       // Mark these products as shown
-      nextBatch.forEach(product => this.shownProducts.add(product.id));
+      nextBatch.forEach(product => this.shownProducts.add(product.id.toString()));
 
       // Calculate if more products are available
       const remainingProducts = this.rankedBlueprints.length - this.shownProducts.size;
@@ -68,7 +63,23 @@ export class ProductResearchAgent {
     }
   }
 
-  private rankBlueprints(blueprints: any[], productDetails: ProductDetails) {
+  private transformToProductResponse(blueprint: PrintifyBlueprint): ProductResponse {
+    // Combine all possible image sources into a single array
+    const images = [
+      ...(blueprint.images || []),
+      ...(blueprint.image ? [blueprint.image] : []),
+      ...(blueprint.preview ? [blueprint.preview] : [])
+    ];
+
+    return {
+      id: blueprint.id,
+      title: blueprint.title,
+      description: blueprint.description || '',
+      images: images.length > 0 ? images : []
+    };
+  }
+
+  private rankBlueprints(blueprints: PrintifyBlueprint[], productDetails: ProductDetails): PrintifyBlueprint[] {
     // Create a mapping of common product type variations
     const productTypeMap: { [key: string]: string[] } = {
       'tshirt': ['t-shirt', 'tee', 'shirt'],
@@ -104,32 +115,12 @@ export class ProductResearchAgent {
           }
         }
 
-        // Check color availability if specified
-        if (productDetails.color && blueprint.variants) {
-          const color = productDetails.color.toLowerCase();
-          blueprint.variants.forEach((variant: any) => {
-            if (variant.options?.color?.toLowerCase().includes(color)) {
-              score += 2;
-            }
-          });
-        }
-
-        // Check material if specified
-        if (productDetails.material && blueprint.variants) {
-          const material = productDetails.material.toLowerCase();
-          blueprint.variants.forEach((variant: any) => {
-            if (variant.options?.material?.toLowerCase().includes(material)) {
-              score += 2;
-            }
-          });
-        }
-
         return {
           ...blueprint,
           matchScore: score
         };
       })
-      .sort((a, b) => b.matchScore - a.matchScore)
+      .sort((a, b) => (b as any).matchScore - (a as any).matchScore)
       .map(({ matchScore, ...blueprint }) => blueprint); // Remove the score before returning
   }
 }

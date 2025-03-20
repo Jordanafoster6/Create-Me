@@ -88,10 +88,35 @@ export const DesignAnalysisSchema = z.object({
   suggestions: z.record(z.string())
 });
 
+// Add these type definitions after the existing types
+export const PrintifyBlueprintSchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  description: z.string().optional(),
+  brand: z.string().optional(),
+  model: z.string().optional(),
+  image: z.string().optional(),
+  preview: z.string().optional(),
+  images: z.array(z.string()).optional(),
+});
+
+export const ProductResponseSchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  description: z.string().optional(),
+  images: z.array(z.string()),
+});
+
+export type PrintifyBlueprint = z.infer<typeof PrintifyBlueprintSchema>;
+export type ProductResponse = z.infer<typeof ProductResponseSchema>;
+
+// Update DesignResponseSchema to include products
 export const DesignResponseSchema = z.object({
-  type: z.literal("design"),
-  imageUrl: z.string(),
-  analysis: z.string(),
+  type: z.enum(["design", "design_and_products", "chat"]),
+  imageUrl: z.string().optional(),
+  analysis: z.string().optional(),
+  message: z.string().optional(),
+  products: z.array(ProductResponseSchema).optional(),
   status: z.string()
 });
 
