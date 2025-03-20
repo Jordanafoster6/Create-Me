@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { ChatMessage, DesignAnalysis, DesignResponse } from "@shared/schema";
+import { ChatMessage, DesignAnalysis } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { ProductPreview } from "@/components/product/preview";
@@ -17,34 +17,29 @@ export function Message({ message }: MessageProps) {
   let jsonContent: any = null;
   let designUrl: string | null = null;
 
-  if (!isUser && message.content) {
+  if (!isUser) {
     try {
       jsonContent = JSON.parse(message.content);
+      console.log('Parsed message content:', jsonContent);
+
       if (jsonContent.type === "design_and_products") {
         contentType = "design_and_products";
-        parsedContent = jsonContent.message;
+        parsedContent = jsonContent.message || "";
         designUrl = jsonContent.design?.imageUrl;
-        if (jsonContent.design?.analysis) {
-          try {
-            analysis = JSON.parse(jsonContent.design.analysis) as DesignAnalysis;
-          } catch (error) {
-            console.warn("Could not parse design analysis:", error);
-          }
-        }
         products = jsonContent.products;
       } else if (jsonContent.type === "design") {
         contentType = "design";
         designUrl = jsonContent.imageUrl;
-        parsedContent = jsonContent.message || '';
+        parsedContent = jsonContent.message || "";
         if (jsonContent.analysis) {
           try {
-            analysis = JSON.parse(jsonContent.analysis) as DesignAnalysis;
+            analysis = JSON.parse(jsonContent.analysis);
           } catch (error) {
-            console.warn("Could not parse analysis:", error);
+            console.warn("Could not parse design analysis:", error);
           }
         }
-      } else if (jsonContent.type === "chat" && jsonContent.message) {
-        parsedContent = jsonContent.message;
+      } else if (jsonContent.type === "chat") {
+        parsedContent = jsonContent.message || "";
       }
     } catch (error) {
       console.debug("Message is not JSON:", message.content);
@@ -66,7 +61,7 @@ export function Message({ message }: MessageProps) {
       >
         {contentType === "design_and_products" ? (
           <div className="space-y-4">
-            <p className="text-sm mb-2">{parsedContent}</p>
+            {parsedContent && <p className="text-sm mb-2">{parsedContent}</p>}
             {designUrl && (
               <>
                 <p className="text-sm mb-2">Here's your initial design:</p>

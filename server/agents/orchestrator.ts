@@ -65,6 +65,7 @@ export class OrchestratorAgent {
 
           // First focus on getting the design right
           const designResponse = await this.designAgent.generateDesign(parsedResponse.designContent);
+          const designData = JSON.parse(designResponse);
 
           // Enter design refinement mode
           this.context.set("designRefinementMode", true);
@@ -74,7 +75,8 @@ export class OrchestratorAgent {
             role: "assistant",
             content: JSON.stringify({
               type: "design",
-              ...JSON.parse(designResponse),
+              imageUrl: designData.imageUrl,
+              analysis: designData.analysis,
               message: "I've created an initial design based on your description. Let's focus on getting the design just right first - how does this look to you? We can make any adjustments needed."
             })
           };
@@ -99,7 +101,6 @@ export class OrchestratorAgent {
 
   private async handleDesignRefinement(message: ChatMessage): Promise<ChatMessage> {
     try {
-      // Analyze if the user is approving or requesting changes
       const approvalResponse = await generateChatResponse([{
         role: "user",
         content: `Determine if the user is approving the design or requesting changes. Consider the context of the current design when analyzing modifications. Respond with JSON:
@@ -121,16 +122,19 @@ export class OrchestratorAgent {
         // Get the stored product details and search for matching products
         const productDetails = this.context.get("currentProductDetails");
         const productResponse = await this.productAgent.handleSearch(productDetails);
-        const { products, hasMore } = JSON.parse(productResponse);
+        const productData = JSON.parse(productResponse);
+        const currentDesign = JSON.parse(this.context.get("currentDesign"));
 
-        // Create a combined response with both the final design and product options
         return {
           role: "assistant",
           content: JSON.stringify({
             type: "design_and_products",
-            design: JSON.parse(this.context.get("currentDesign")),
-            products: products,
-            message: `Perfect! Now that we have your design finalized, let's choose the right product for it. I've found some products that match your requirements. Please take a look at the options below and let me know which one you'd prefer. You can refer to them by their name or number in the list.${hasMore ? "\n\nIf you don't see what you're looking for, just let me know and I can show you more options." : ""}`
+            design: {
+              imageUrl: currentDesign.imageUrl,
+              analysis: currentDesign.analysis
+            },
+            products: productData.products,
+            message: `Perfect! Now that we have your design finalized, let's choose the right product for it. I've found some products that match your requirements. Please take a look at the options below and let me know which one you'd prefer. You can refer to them by their name or number in the list.${productData.hasMore ? "\n\nIf you don't see what you're looking for, just let me know and I can show you more options." : ""}`
           })
         };
       } else {
@@ -139,6 +143,7 @@ export class OrchestratorAgent {
           this.context.get("currentDesign"),
           parsedResponse.changes
         );
+        const designData = JSON.parse(newDesign);
 
         // Update the current design in context
         this.context.set("currentDesign", newDesign);
@@ -147,7 +152,8 @@ export class OrchestratorAgent {
           role: "assistant",
           content: JSON.stringify({
             type: "design",
-            ...JSON.parse(newDesign),
+            imageUrl: designData.imageUrl,
+            analysis: designData.analysis,
             message: "I've updated the design based on your feedback. How does this look now? We can make more adjustments if needed."
           })
         };
