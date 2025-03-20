@@ -145,14 +145,15 @@ export const OrchestratorResponseSchema = z.discriminatedUnion("type", [
     originalPrompt: z.string(),
     currentPrompt: z.string(),
     message: z.string().optional(),
-    status: z.string()
+    status: z.enum(["refining", "approved"])
   }),
   z.object({
     type: z.literal("design_and_products"),
     design: DesignResponseSchema,
     products: z.array(PrintifyBlueprintSchema),
     message: z.string(),
-    hasMore: z.boolean().optional()
+    hasMore: z.boolean().optional(),
+    status: z.enum(["approved", "selecting"])
   })
 ]);
 

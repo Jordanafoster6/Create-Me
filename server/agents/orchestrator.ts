@@ -184,6 +184,7 @@ export class OrchestratorAgent {
           design: JSON.parse(this.context.get("currentDesign")),
           products,
           hasMore,
+          status: "approved", // Add status to indicate this is an approved design
           message: `Perfect! I've found some products that match your requirements. Take a look at these options and let me know which one you prefer. ${hasMore ? "\n\nIf none of these are quite right, I can show you more options." : ""}`
         };
 
@@ -206,7 +207,7 @@ export class OrchestratorAgent {
           imageUrl: designData.imageUrl,
           originalPrompt: designData.originalPrompt,
           currentPrompt: designData.currentPrompt,
-          status: designData.status,
+          status: "refining", // Add status to indicate this is still being refined
           message: "I've updated the design based on your feedback. How does this look now?"
         };
 
