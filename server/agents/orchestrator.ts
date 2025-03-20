@@ -51,15 +51,27 @@ export class OrchestratorAgent {
       // Get initial parsing of user intent from OpenAI
       const aiResponse = await generateChatResponse([
         {
-          role: "system",
-          content: "You are a product customization assistant. Parse user input for product details and design requirements."
+          role: "user",
+          content: `Parse this into product details and design content. Format response as JSON:
+{
+  "type": "parse",
+  "productDetails": {
+    "type": "product type if mentioned",
+    "color": "color if mentioned",
+    "size": "size if mentioned",
+    "material": "material if mentioned"
+  },
+  "designContent": "description of the design content only"
+}`
         },
-        ...this.messageHistory
+        message
       ]);
 
       let parsedResponse;
       try {
         parsedResponse = JSON.parse(aiResponse);
+        logger.info("Parsed AI response", { type: parsedResponse.type });
+
         if (parsedResponse.type === "parse") {
           // Store the parsed details in context
           this.context.set("currentProductDetails", parsedResponse.productDetails);
@@ -82,7 +94,7 @@ export class OrchestratorAgent {
           };
         }
       } catch (error) {
-        logger.error('Failed to parse AI response:', error);
+        logger.error('Failed to parse AI response:', { error, response: aiResponse });
       }
 
       // Fallback response if parsing fails
@@ -102,17 +114,16 @@ export class OrchestratorAgent {
   private async handleDesignRefinement(message: ChatMessage): Promise<ChatMessage> {
     try {
       // Analyze if the user is approving or requesting changes
-      const approvalResponse = await generateChatResponse([{
-        role: "user",
-        content: `Determine if the user is approving the design or requesting changes. Consider the context of the current design when analyzing modifications. Respond with JSON:
+      const approvalResponse = await generateChatResponse([
         {
-          "type": "design_feedback",
-          "isApproved": boolean,
-          "changes": "description of requested changes if any"
-        }`
-      }, message]);
+          role: "user",
+          content: "Determine if this message approves the design or requests changes. Respond with JSON: { type: 'design_feedback', isApproved: boolean, changes: 'description of changes if any' }"
+        },
+        message
+      ]);
 
       const parsedResponse = JSON.parse(approvalResponse);
+      logger.info("Design feedback parsed", { isApproved: parsedResponse.isApproved });
 
       if (parsedResponse.isApproved) {
         // Design is approved, now we can search for matching products
@@ -125,7 +136,6 @@ export class OrchestratorAgent {
         const productResponse = await this.productAgent.handleSearch(productDetails);
         const { products, hasMore } = JSON.parse(productResponse);
 
-        // Create a combined response with both the final design and product options
         return {
           role: "assistant",
           content: JSON.stringify({
@@ -155,7 +165,7 @@ export class OrchestratorAgent {
         };
       }
     } catch (error: any) {
-      console.error('Design Refinement Error:', error);
+      logger.error('Design Refinement Error:', error);
       throw new Error(`Design Refinement Error: ${error?.message || 'Unknown error'}`);
     }
   }
@@ -163,17 +173,16 @@ export class OrchestratorAgent {
   private async handleProductSelection(message: ChatMessage): Promise<ChatMessage> {
     try {
       // First, check if the user wants to see more products
-      const moreProductsResponse = await generateChatResponse([{
-        role: "user",
-        content: `Determine if the user is requesting to see more product options. Respond with JSON:
+      const moreProductsResponse = await generateChatResponse([
         {
-          "type": "product_selection",
-          "wantsMore": boolean,
-          "selectedProduct": number or null
-        }`
-      }, message]);
+          role: "user",
+          content: "Determine if this message requests more product options. Respond with JSON: { type: 'product_selection', wantsMore: boolean, selectedProduct: number or null }"
+        },
+        message
+      ]);
 
       const parsedResponse = JSON.parse(moreProductsResponse);
+      logger.info("Product selection parsed", { wantsMore: parsedResponse.wantsMore });
 
       if (parsedResponse.wantsMore) {
         // User wants to see more products
@@ -222,7 +231,7 @@ export class OrchestratorAgent {
         })
       };
     } catch (error: any) {
-      console.error('Product Selection Error:', error);
+      logger.error('Product Selection Error:', error);
       throw new Error(`Product Selection Error: ${error?.message || 'Unknown error'}`);
     }
   }
