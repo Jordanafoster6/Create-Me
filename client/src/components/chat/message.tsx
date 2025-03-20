@@ -15,6 +15,7 @@ export function Message({ message }: MessageProps) {
   let analysis: DesignAnalysis | null = null;
   let products = null;
   let jsonContent: any = null;
+  let designUrl: string | null = null;
 
   if (!isUser && message.content) {
     try {
@@ -22,6 +23,7 @@ export function Message({ message }: MessageProps) {
       if (jsonContent.type === "design_and_products") {
         contentType = "design_and_products";
         parsedContent = jsonContent.message;
+        designUrl = jsonContent.design?.imageUrl;
         if (jsonContent.design?.analysis) {
           try {
             analysis = JSON.parse(jsonContent.design.analysis) as DesignAnalysis;
@@ -32,7 +34,8 @@ export function Message({ message }: MessageProps) {
         products = jsonContent.products;
       } else if (jsonContent.type === "design") {
         contentType = "design";
-        parsedContent = jsonContent.imageUrl;
+        designUrl = jsonContent.imageUrl;
+        parsedContent = jsonContent.message || '';
         if (jsonContent.analysis) {
           try {
             analysis = JSON.parse(jsonContent.analysis) as DesignAnalysis;
@@ -64,12 +67,12 @@ export function Message({ message }: MessageProps) {
         {contentType === "design_and_products" ? (
           <div className="space-y-4">
             <p className="text-sm mb-2">{parsedContent}</p>
-            {jsonContent?.design && (
+            {designUrl && (
               <>
                 <p className="text-sm mb-2">Here's your initial design:</p>
                 <AspectRatio ratio={1}>
                   <img
-                    src={jsonContent.design.imageUrl}
+                    src={designUrl}
                     alt="Generated design"
                     className="rounded-md object-cover w-full h-full"
                   />
@@ -101,8 +104,8 @@ export function Message({ message }: MessageProps) {
                   {products.map((product: any, index: number) => (
                     <ProductPreview
                       key={index}
-                      imageUrl={product.images[0]}
-                      productName={product.title}
+                      imageUrl={product.images?.[0] || ''}
+                      productName={product.title || `Product ${index + 1}`}
                     />
                   ))}
                 </div>
@@ -111,14 +114,16 @@ export function Message({ message }: MessageProps) {
           </div>
         ) : contentType === "design" ? (
           <div className="space-y-4">
-            <p className="text-sm mb-2">Here's your generated design:</p>
-            <AspectRatio ratio={1}>
-              <img
-                src={parsedContent}
-                alt="Generated design"
-                className="rounded-md object-cover w-full h-full"
-              />
-            </AspectRatio>
+            {parsedContent && <p className="text-sm mb-2">{parsedContent}</p>}
+            {designUrl && (
+              <AspectRatio ratio={1}>
+                <img
+                  src={designUrl}
+                  alt="Generated design"
+                  className="rounded-md object-cover w-full h-full"
+                />
+              </AspectRatio>
+            )}
             {analysis?.imageAnalysis && (
               <div className="mt-4 space-y-2">
                 <h4 className="font-medium">Design Analysis:</h4>
