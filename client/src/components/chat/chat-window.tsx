@@ -62,22 +62,32 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
 
         // Only trigger design approval when the design is actually approved
         if (response.type === "design_and_products" && response.status === "approved") {
-          logger.info("Design approved", { imageUrl: response.design.imageUrl });
-          onDesignApproved?.(response.design.imageUrl);
+          logger.info("Design and product approved", { 
+            imageUrl: response.design.imageUrl,
+            selectedProduct: response.products[0]
+          });
 
+          const product = response.products[0];
           const config: PrintifyProductConfig = {
-            status: "selecting_product",
+            status: "product_selected",
             approved_design_url: response.design.imageUrl,
-            title: "",
-            description: "",
+            title: product.title,
+            description: product.description || "",
+            blueprint_id: product.id.toString(),
             print_areas: {
               front: { src: response.design.imageUrl }
             },
-            variant_ids: [],
-            metadata: {}
+            variant_ids: product.variants?.map(v => v.id) || [],
+            metadata: {
+              product_type: product.type,
+              brand: product.brand,
+              model: product.model
+            }
           };
+
           logger.info("Updating product config", { config });
           onProductConfigUpdate?.(config);
+          onDesignApproved?.(response.design.imageUrl);
         }
 
         queryClient.invalidateQueries({ queryKey: ["/api/chat"] });

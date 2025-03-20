@@ -138,7 +138,7 @@ export class OrchestratorAgent {
       ]);
 
       const parsed = JSON.parse(aiResponse) as ParsedMessage;
-      logger.info("Successfully parsed user intent", { 
+      logger.info("Successfully parsed user intent", {
         productType: parsed.productDetails.type,
         hasDesignContent: Boolean(parsed.designContent)
       });
@@ -178,6 +178,7 @@ export class OrchestratorAgent {
         const productDetails = this.context.get("currentProductDetails");
         const productResponse = await this.productAgent.handleSearch(productDetails);
         const { products, hasMore } = JSON.parse(productResponse);
+        this.context.set("currentProducts", productResponse); //Store products in context
 
         const response: OrchestratorResponse = {
           type: "design_and_products",
@@ -284,11 +285,23 @@ export class OrchestratorAgent {
         this.context.set("productSelectionMode", false);
         this.context.set("selectedProduct", selection.selectedProduct);
 
+        // Get the selected product from context
+        const products = JSON.parse(this.context.get("currentProducts"));
+        const selectedProduct = products.find((p: any) => p.id === selection.selectedProduct);
+
+        if (!selectedProduct) {
+          throw new Error("Selected product not found");
+        }
+
         const response: OrchestratorResponse = {
-          type: "chat",
-          message: "Great choice! Let's configure your selected product with the design we created."
+          type: "design_and_products",
+          design: JSON.parse(this.context.get("currentDesign")),
+          products: [selectedProduct], // Include only selected product
+          status: "approved",
+          message: "Great choice! Your product has been configured with the approved design."
         };
 
+        // Validate response format
         return {
           role: "assistant",
           content: JSON.stringify(OrchestratorResponseSchema.parse(response))
