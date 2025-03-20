@@ -8,15 +8,18 @@ import { QuickActions } from "./quick-actions";
 import { ChatMessage } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { logger } from "@/lib/logger";
 
-interface ChatResponse {
-  type: string;
-  message?: string;
-  imageUrl?: string;
-  products?: any[];
-  status?: string;
-}
-
+/**
+ * ChatWindow Component
+ * 
+ * Handles the main chat interface including:
+ * - Message input and submission
+ * - Message history display
+ * - Quick action buttons
+ * - Loading states
+ * - Error handling
+ */
 export function ChatWindow() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -28,6 +31,7 @@ export function ChatWindow() {
   ]);
   const { toast } = useToast();
 
+  // Message sending mutation
   const sendMessage = useMutation({
     mutationFn: async (messageContent: string) => {
       const userMessage: ChatMessage = {
@@ -49,8 +53,10 @@ export function ChatWindow() {
         }]);
 
         queryClient.invalidateQueries({ queryKey: ["/api/chat"] });
+        logger.info("Successfully received chat response");
       } catch (error) {
-        console.error("Error processing chat response:", error);
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        logger.error("Error processing chat response:", { error: errorMessage });
         toast({
           title: "Error processing response",
           description: "There was a problem displaying the message",
@@ -59,6 +65,7 @@ export function ChatWindow() {
       }
     },
     onError: (error: Error) => {
+      logger.error("Failed to send message", { error: error.message });
       toast({
         title: "Error sending message",
         description: error.message,

@@ -1,7 +1,11 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { ChatMessage, ChatMessageSchema } from '@shared/schema';
+import { ChatMessage, ChatMessageSchema, OrchestratorResponse } from '@shared/schema';
 import { apiRequest } from '@/lib/queryClient';
+import { logger } from '@/lib/logger';
 
+/**
+ * Represents the state shape for the chat feature
+ */
 interface ChatState {
   messages: ChatMessage[];
   currentDesignUrl: string | null;
@@ -22,7 +26,11 @@ const initialState: ChatState = {
   error: null
 };
 
-// Async thunks
+/**
+ * Async thunk for sending a message to the chat API
+ * @param content The message content to send
+ * @returns The API response containing both user and assistant messages
+ */
 export const sendMessage = createAsyncThunk(
   'chat/sendMessage',
   async (content: string, { rejectWithValue }) => {
@@ -32,30 +40,48 @@ export const sendMessage = createAsyncThunk(
         role: 'user'
       };
 
+      // Validate the message format before sending
+      ChatMessageSchema.parse(userMessage);
+
       const response = await apiRequest('POST', '/api/chat', userMessage);
       const data = await response.json();
-      
+
       // Validate response format
-      const validatedResponse = ChatMessageSchema.parse(data);
+      const assistantMessage = ChatMessageSchema.parse(data);
+
+      // Log successful message sending
+      logger.info('Message sent successfully', { content });
+
       return {
         userMessage,
-        assistantMessage: validatedResponse
+        assistantMessage
       };
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to send message');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
+      logger.error('Failed to send message', { error: errorMessage, content });
+      return rejectWithValue(errorMessage);
     }
   }
 );
 
+/**
+ * Async thunk for generating a design based on a prompt
+ * @param prompt The design prompt to use
+ * @returns The URL of the generated design image
+ */
 export const generateDesign = createAsyncThunk(
   'chat/generateDesign',
   async (prompt: string, { rejectWithValue }) => {
     try {
       const response = await apiRequest('POST', '/api/designs', { prompt });
       const data = await response.json();
+
+      logger.info('Design generated successfully', { prompt });
       return data.imageUrl;
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to generate design');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate design';
+      logger.error('Failed to generate design', { error: errorMessage, prompt });
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -118,7 +144,7 @@ const chatSlice = createSlice({
 export const { clearMessages, setSelectedProduct, clearError } = chatSlice.actions;
 export default chatSlice.reducer;
 
-// Selectors
+// Type-safe selectors
 export const selectMessages = (state: { chat: ChatState }) => state.chat.messages;
 export const selectCurrentDesign = (state: { chat: ChatState }) => state.chat.currentDesignUrl;
 export const selectSelectedProduct = (state: { chat: ChatState }) => state.chat.selectedProduct;
