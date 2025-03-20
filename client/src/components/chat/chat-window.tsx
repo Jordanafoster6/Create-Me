@@ -51,23 +51,26 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
     },
     onSuccess: (data: ChatMessage) => {
       try {
-        const response = JSON.parse(data.content) as OrchestratorResponse;
-        logger.info("Processing chat response", { type: response.type });
-
-        // Add the assistant's message to the chat
+        // Add the assistant's message to the chat first
         setMessages(prev => [...prev, {
           role: "assistant",
           content: data.content
         }]);
 
-        // Only trigger design approval when the design is actually approved
+        const response = JSON.parse(data.content) as OrchestratorResponse;
+        logger.info("Processing chat response", { type: response.type });
+
+        // Only trigger design approval and product config when the design is actually approved
         if (response.type === "design_and_products" && response.status === "approved") {
           logger.info("Design and product approved", { 
             imageUrl: response.design.imageUrl,
             selectedProduct: response.products[0]
           });
 
+          // Get the selected product
           const product = response.products[0];
+
+          // Create the product configuration
           const config: PrintifyProductConfig = {
             status: "product_selected",
             approved_design_url: response.design.imageUrl,

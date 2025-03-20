@@ -16,6 +16,18 @@ interface ParsedMessage {
   designContent: string;
 }
 
+/**
+ * Orchestrator Agent
+ * 
+ * Manages the flow of conversation and coordinates between different specialized agents
+ * (design, product research, configuration) to handle user requests for product customization.
+ * 
+ * Key responsibilities:
+ * - Parsing user intent
+ * - Managing conversation context
+ * - Coordinating between specialized agents
+ * - Ensuring type-safe responses
+ */
 export class OrchestratorAgent {
   private productAgent: ProductResearchAgent;
   private designAgent: DesignAgent;
@@ -31,11 +43,19 @@ export class OrchestratorAgent {
     this.messageHistory = [];
   }
 
+  /**
+   * Processes incoming user messages and orchestrates the appropriate response
+   * 
+   * @param message The incoming chat message
+   * @returns Promise<ChatMessage> A properly formatted and validated response
+   * @throws Error if message processing fails
+   */
   async processMessage(message: ChatMessage): Promise<ChatMessage> {
     try {
       this.messageHistory.push(message);
       logger.info("Processing new message", { role: message.role });
 
+      // Handle different conversation modes
       if (this.context.get("designRefinementMode")) {
         return await this.handleDesignRefinement(message);
       }
@@ -44,14 +64,17 @@ export class OrchestratorAgent {
         return await this.handleProductSelection(message);
       }
 
+      // Initial message parsing
       const parsedMessage = await this.parseUserIntent(message);
 
       if (parsedMessage) {
         this.context.set("currentProductDetails", parsedMessage.productDetails);
         this.context.set("currentDesignContent", parsedMessage.designContent);
 
+        // Generate initial design
         const designResponse = await this.designAgent.generateDesign(parsedMessage.designContent);
 
+        // Enter design refinement mode
         this.context.set("designRefinementMode", true);
         this.context.set("currentDesign", designResponse);
 
@@ -61,6 +84,7 @@ export class OrchestratorAgent {
           message: "I've created an initial design based on your description. How does this look? We can make any adjustments needed."
         };
 
+        // Validate response format
         const validatedResponse = OrchestratorResponseSchema.parse(response);
 
         return {
@@ -69,6 +93,7 @@ export class OrchestratorAgent {
         };
       }
 
+      // Fallback response for unclear intent
       const fallbackResponse: OrchestratorResponse = {
         type: "chat",
         message: "Could you please tell me what kind of product you'd like to customize and what design you'd like on it?"
@@ -78,6 +103,7 @@ export class OrchestratorAgent {
         role: "assistant",
         content: JSON.stringify(fallbackResponse)
       };
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error("Orchestration Error", { error: errorMessage });
@@ -85,6 +111,12 @@ export class OrchestratorAgent {
     }
   }
 
+  /**
+   * Parses user intent to extract product details and design requirements
+   * 
+   * @param message The user's message to parse
+   * @returns Promise<ParsedMessage | null> Parsed intent or null if parsing fails
+   */
   private async parseUserIntent(message: ChatMessage): Promise<ParsedMessage | null> {
     try {
       const aiResponse = await generateChatResponse([
@@ -118,6 +150,12 @@ export class OrchestratorAgent {
     }
   }
 
+  /**
+   * Handles the design refinement phase of the conversation
+   * 
+   * @param message User's feedback on the current design
+   * @returns Promise<ChatMessage> Response with either modified design or product options
+   */
   private async handleDesignRefinement(message: ChatMessage): Promise<ChatMessage> {
     try {
       const approvalResponse = await generateChatResponse([
@@ -132,6 +170,7 @@ export class OrchestratorAgent {
       logger.info("Processing design feedback", { isApproved: feedback.isApproved });
 
       if (feedback.isApproved) {
+        // Move to product selection phase
         this.context.set("designRefinementMode", false);
         this.context.set("designApproved", true);
         this.context.set("productSelectionMode", true);
@@ -155,6 +194,7 @@ export class OrchestratorAgent {
           content: JSON.stringify(OrchestratorResponseSchema.parse(response))
         };
       } else {
+        // Modify the design based on feedback
         const newDesign = await this.designAgent.modifyDesign(
           this.context.get("currentDesign"),
           feedback.changes
@@ -189,6 +229,13 @@ export class OrchestratorAgent {
     }
   }
 
+  /**
+   * Handles the product selection phase of the conversation
+   * Uses array index-based selection for reliable product identification
+   * 
+   * @param message User's product selection or request for more options
+   * @returns Promise<ChatMessage> Response with either more products or final configuration
+   */
   private async handleProductSelection(message: ChatMessage): Promise<ChatMessage> {
     try {
       const selectionResponse = await generateChatResponse([
@@ -208,6 +255,7 @@ export class OrchestratorAgent {
       logger.info("Processing product selection", { selection });
 
       if (selection.wantsMore) {
+        // Handle request for more product options
         const productDetails = this.context.get("currentProductDetails");
         const productResponse = await this.productAgent.handleSearch(productDetails, false);
         const { products, hasMore, totalRemaining } = JSON.parse(productResponse);
@@ -253,6 +301,7 @@ export class OrchestratorAgent {
 
         logger.info("Selected product:", { selectedProduct });
 
+        // Create final response with both approved design and selected product
         const response: OrchestratorResponse = {
           type: "design_and_products",
           design: JSON.parse(this.context.get("currentDesign")),
