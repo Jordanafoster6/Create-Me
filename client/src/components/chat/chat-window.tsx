@@ -15,15 +15,9 @@ interface ChatResponse {
   imageUrl?: string;
   products?: any[];
   status?: string;
-  design?: { imageUrl: string };
 }
 
-interface ChatWindowProps {
-  onDesignApproved: (designUrl: string) => void;
-  onProductUpdate: (data: any) => void;
-}
-
-export function ChatWindow({ onDesignApproved, onProductUpdate }: ChatWindowProps) {
+export function ChatWindow() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -48,24 +42,7 @@ export function ChatWindow({ onDesignApproved, onProductUpdate }: ChatWindowProp
         let assistantContent = data.content;
         try {
           const parsedResponse = JSON.parse(data.content) as ChatResponse;
-
-          // Handle design approval and product updates
-          if (parsedResponse.type === "design_and_products") {
-            if (parsedResponse.design?.imageUrl) {
-              onDesignApproved(parsedResponse.design.imageUrl);
-            }
-            if (parsedResponse.products) {
-              onProductUpdate({
-                blueprint_id: parsedResponse.products[0]?.id,
-                title: "Custom Design Product",
-                description: "AI-generated custom design product",
-                print_areas: {
-                  front: { src: parsedResponse.design?.imageUrl }
-                }
-              });
-            }
-            assistantContent = parsedResponse.message || "";
-          } else if (parsedResponse.type === "chat" && parsedResponse.message) {
+          if (parsedResponse.type === "chat" && parsedResponse.message) {
             assistantContent = parsedResponse.message;
           }
         } catch (error) {
@@ -78,6 +55,7 @@ export function ChatWindow({ onDesignApproved, onProductUpdate }: ChatWindowProp
         };
 
         setMessages((prev) => [...prev, assistantMessage]);
+
         queryClient.invalidateQueries({ queryKey: ["/api/chat"] });
       } catch (error) {
         console.error("Error processing chat response:", error);

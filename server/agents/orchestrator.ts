@@ -121,7 +121,7 @@ export class OrchestratorAgent {
         // Get the stored product details and search for matching products
         const productDetails = this.context.get("currentProductDetails");
         const productResponse = await this.productAgent.handleSearch(productDetails);
-        const parsedProductResponse = JSON.parse(productResponse);
+        const { products, hasMore } = JSON.parse(productResponse);
 
         // Create a combined response with both the final design and product options
         return {
@@ -129,8 +129,8 @@ export class OrchestratorAgent {
           content: JSON.stringify({
             type: "design_and_products",
             design: JSON.parse(this.context.get("currentDesign")),
-            products: parsedProductResponse.products,
-            message: `Perfect! Now that we have your design finalized, let's choose the right product for it. I've found some products that match your requirements. Please take a look at the options below and let me know which one you'd prefer. You can refer to them by their name or number in the list.${parsedProductResponse.hasMore ? "\n\nIf you don't see what you're looking for, just let me know and I can show you more options." : ""}`
+            products: products,
+            message: `Perfect! Now that we have your design finalized, let's choose the right product for it. I've found some products that match your requirements. Please take a look at the options below and let me know which one you'd prefer. You can refer to them by their name or number in the list.${hasMore ? "\n\nIf you don't see what you're looking for, just let me know and I can show you more options." : ""}`
           })
         };
       } else {
@@ -177,9 +177,9 @@ export class OrchestratorAgent {
         // User wants to see more products
         const productDetails = this.context.get("currentProductDetails");
         const productResponse = await this.productAgent.handleSearch(productDetails, false);
-        const parsedProductResponse = JSON.parse(productResponse);
+        const { products, hasMore, totalRemaining } = JSON.parse(productResponse);
 
-        if (parsedProductResponse.products.length === 0) {
+        if (products.length === 0) {
           return {
             role: "assistant",
             content: JSON.stringify({
@@ -194,13 +194,14 @@ export class OrchestratorAgent {
           content: JSON.stringify({
             type: "design_and_products",
             design: JSON.parse(this.context.get("currentDesign")),
-            products: parsedProductResponse.products,
-            message: `Here are some more options that match your requirements. ${parsedProductResponse.hasMore ? `\n\nThere are ${parsedProductResponse.totalRemaining} more options available if none of these are quite right.` : "\n\nThese are the last available options that match your requirements."}`
+            products: products,
+            message: `Here are some more options that match your requirements. ${hasMore ? `\n\nThere are ${totalRemaining} more options available if none of these are quite right.` : "\n\nThese are the last available options that match your requirements."}`
           })
         };
       } else if (parsedResponse.selectedProduct !== null) {
         // User has selected a product, move to configuration
         this.context.set("productSelectionMode", false);
+        // TODO: Implement product configuration flow
         return {
           role: "assistant",
           content: JSON.stringify({
