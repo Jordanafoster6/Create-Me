@@ -184,7 +184,7 @@ export class OrchestratorAgent {
           design: JSON.parse(this.context.get("currentDesign")),
           products,
           hasMore,
-          message: `Perfect! Now that we have your design finalized, let's choose the right product for it. ${hasMore ? "\n\nIf you don't see what you're looking for, just let me know and I can show you more options." : ""}`
+          message: `Perfect! I've found some products that match your requirements. Take a look at these options and let me know which one you prefer. ${hasMore ? "\n\nIf none of these are quite right, I can show you more options." : ""}`
         };
 
         return {
@@ -198,13 +198,23 @@ export class OrchestratorAgent {
           feedback.changes
         );
 
-        this.context.set("currentDesign", newDesign);
+        // Even if analysis failed, we can still return the new design
+        const designData = JSON.parse(newDesign);
 
         const response: OrchestratorResponse = {
           type: "design",
-          ...JSON.parse(newDesign),
+          imageUrl: designData.imageUrl,
+          originalPrompt: designData.originalPrompt,
+          currentPrompt: designData.currentPrompt,
+          status: designData.status,
           message: "I've updated the design based on your feedback. How does this look now?"
         };
+
+        if (designData.analysis) {
+          response.analysis = designData.analysis;
+        }
+
+        this.context.set("currentDesign", JSON.stringify(response));
 
         return {
           role: "assistant",

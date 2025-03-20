@@ -73,6 +73,8 @@ export function Message({ message }: MessageProps) {
                         const analysis: DesignAnalysis = JSON.parse(
                           response.type === "design" ? response.analysis : response.design.analysis
                         );
+                        if (!analysis?.imageAnalysis?.description) return null;
+
                         return (
                           <>
                             <p className="text-sm text-muted-foreground">
@@ -103,7 +105,7 @@ export function Message({ message }: MessageProps) {
                   <div className="mt-6">
                     <h4 className="font-medium mb-3">Available Products:</h4>
                     <div className="grid grid-cols-2 gap-4">
-                      {response.products.map((product, index) => (
+                      {response.products.map((product) => (
                         <ProductPreview
                           key={product.id}
                           imageUrl={product.images[0]}

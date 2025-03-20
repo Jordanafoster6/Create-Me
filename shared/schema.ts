@@ -85,15 +85,15 @@ export type ProductConfig = z.infer<typeof ProductConfigSchema>;
 // Design Response Types
 export const DesignAnalysisSchema = z.object({
   imageAnalysis: z.object({
-    description: z.string(),
+    description: z.string().optional(),
   }),
-  suggestions: z.record(z.string()),
+  suggestions: z.record(z.string()).optional(),
 });
 
 export const DesignResponseSchema = z.object({
   type: z.literal("design"),
   imageUrl: z.string(),
-  analysis: z.string(),
+  analysis: z.string().optional(),
   originalPrompt: z.string(),
   currentPrompt: z.string(),
   status: z.string(),
@@ -141,7 +141,7 @@ export const OrchestratorResponseSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("design"),
     imageUrl: z.string(),
-    analysis: z.string(),
+    analysis: z.string().optional(),
     originalPrompt: z.string(),
     currentPrompt: z.string(),
     message: z.string().optional(),
