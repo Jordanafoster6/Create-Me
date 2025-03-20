@@ -78,7 +78,9 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
             description: product.description || "",
             blueprint_id: product.id.toString(),
             print_areas: {
-              front: { src: response.design.imageUrl }
+              front: { 
+                src: product.images[0] 
+              }
             },
             variant_ids: product.variants?.map(v => v.id) || [],
             metadata: {
