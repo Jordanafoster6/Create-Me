@@ -291,7 +291,10 @@ export class OrchestratorAgent {
         logger.info("Selected product:", { selectedProduct });
 
         const response: OrchestratorResponse = {
-          type: "chat",
+          type: "design_and_products",
+          design: JSON.parse(this.context.get("currentDesign")),
+          products: [selectedProduct],
+          status: "approved",
           message: `Great choice! We'll add your design to the ${selectedProduct.title}.`
         };
 

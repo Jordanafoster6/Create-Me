@@ -36,6 +36,14 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
   ]);
   const { toast } = useToast();
 
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    sendMessage.mutate(input);
+    setInput("");
+  }
+
   const sendMessage = useMutation({
     mutationFn: async (messageContent: string) => {
       const userMessage: ChatMessage = {
@@ -59,7 +67,7 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
         const response = JSON.parse(data.content) as OrchestratorResponse;
         logger.info("Processing chat response", { type: response.type });
 
-        // Only trigger design approval when the design is actually approved
+        // Handle product selection and design approval
         if (response.type === "design_and_products" && response.status === "approved") {
           logger.info("Design and product approved", { 
             imageUrl: response.design.imageUrl,
@@ -113,14 +121,6 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
       });
     },
   });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-
-    sendMessage.mutate(input);
-    setInput("");
-  };
 
   return (
     <div className="flex flex-col h-full">
