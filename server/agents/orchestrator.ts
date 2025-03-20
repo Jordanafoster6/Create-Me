@@ -270,6 +270,7 @@ export class OrchestratorAgent {
           design: JSON.parse(this.context.get("currentDesign")),
           products,
           hasMore,
+          status: "selecting", // Add required status
           message: `Here are some more options that match your requirements. ${hasMore ? `\n\nThere are ${totalRemaining} more options available if none of these are quite right.` : ""}`
         };
 
