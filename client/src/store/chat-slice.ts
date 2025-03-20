@@ -10,6 +10,22 @@ interface ChatState {
     name: string;
     variantId: number;
   } | null;
+  productDetails: {
+    blueprint_id?: string;
+    title?: string;
+    description?: string;
+    print_areas?: Record<string, { src: string }>;
+    variant_ids?: number[];
+    variants?: any[];
+    options?: Record<string, any>;
+    metadata?: Record<string, any>;
+    status?: string;
+    images?: string[];
+    price?: number;
+    shipping?: Record<string, any>;
+    mockups?: string[];
+    print_details?: Record<string, any>;
+  };
   isLoading: boolean;
   error: string | null;
 }
@@ -18,6 +34,7 @@ const initialState: ChatState = {
   messages: [],
   currentDesignUrl: null,
   selectedProduct: null,
+  productDetails: {},
   isLoading: false,
   error: null
 };
@@ -68,6 +85,7 @@ const chatSlice = createSlice({
       state.messages = [];
       state.currentDesignUrl = null;
       state.selectedProduct = null;
+      state.productDetails = {};
       state.error = null;
     },
     setSelectedProduct: (state, action: PayloadAction<{
@@ -76,6 +94,12 @@ const chatSlice = createSlice({
       variantId: number;
     } | null>) => {
       state.selectedProduct = action.payload;
+    },
+    updateProductDetails: (state, action: PayloadAction<Partial<ChatState['productDetails']>>) => {
+      state.productDetails = {
+        ...state.productDetails,
+        ...action.payload
+      };
     },
     clearError: (state) => {
       state.error = null;
@@ -115,7 +139,12 @@ const chatSlice = createSlice({
   }
 });
 
-export const { clearMessages, setSelectedProduct, clearError } = chatSlice.actions;
+export const { 
+  clearMessages, 
+  setSelectedProduct, 
+  updateProductDetails,
+  clearError 
+} = chatSlice.actions;
 export default chatSlice.reducer;
 
 // Selectors
@@ -124,3 +153,6 @@ export const selectCurrentDesign = (state: { chat: ChatState }) => state.chat.cu
 export const selectSelectedProduct = (state: { chat: ChatState }) => state.chat.selectedProduct;
 export const selectIsLoading = (state: { chat: ChatState }) => state.chat.isLoading;
 export const selectError = (state: { chat: ChatState }) => state.chat.error;
+
+// New selector for product details
+export const selectProductDetails = (state: { chat: ChatState }) => state.chat.productDetails;
