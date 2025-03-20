@@ -5,11 +5,12 @@ import { ChatWindow } from "@/components/chat/chat-window";
 import { ProductStatusCard } from "@/components/product/product-status-card";
 import { Card } from "@/components/ui/card";
 import { useAppSelector } from "@/store";
-import { selectCurrentDesign, selectProductDetails } from "@/store/chat-slice";
+import { selectCurrentDesign, selectProductDetails, selectSelectedProduct } from "@/store/chat-slice";
 
 function ChatContent() {
   const currentDesign = useAppSelector(selectCurrentDesign);
   const productDetails = useAppSelector(selectProductDetails);
+  const selectedProduct = useAppSelector(selectSelectedProduct);
 
   return (
     <div className="min-h-screen bg-background flex gap-4 p-4">
@@ -18,6 +19,7 @@ function ChatContent() {
           <ProductStatusCard
             designUrl={currentDesign}
             productData={productDetails}
+            selectedProduct={selectedProduct}
           />
         </div>
       </div>
