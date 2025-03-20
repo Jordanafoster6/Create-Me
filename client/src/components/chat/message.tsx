@@ -40,9 +40,6 @@ export function Message({ message }: MessageProps) {
             console.warn("Could not parse analysis:", error);
           }
         }
-      } else if (jsonContent.type === "product_configured") {
-        contentType = "product_configured";
-        parsedContent = jsonContent.message;
       } else if (jsonContent.type === "chat" && jsonContent.message) {
         parsedContent = jsonContent.message;
       }
@@ -140,10 +137,6 @@ export function Message({ message }: MessageProps) {
                 )}
               </div>
             )}
-          </div>
-        ) : contentType === "product_configured" ? (
-          <div className="space-y-4">
-            <p className="text-sm text-primary">{parsedContent}</p>
           </div>
         ) : (
           <p className="text-sm whitespace-pre-wrap">{parsedContent}</p>
