@@ -10,6 +10,33 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { logger } from "@/lib/logger";
 
+interface PrintifyProductConfig {
+  status: string;
+  approved_design_url: string;
+  title: string;
+  description: string;
+  print_areas: {
+    front: { src: string; };
+  };
+  variant_ids: number[];
+}
+
+interface OrchestratorResponse {
+  type: string;
+  status: string;
+  imageUrl?: string;
+  design?: {
+    status: string;
+    imageUrl: string;
+  };
+}
+
+
+interface ChatWindowProps {
+  onDesignApproved?: (designUrl: string) => void;
+  onProductConfigUpdate?: (config: PrintifyProductConfig) => void;
+}
+
 /**
  * ChatWindow Component
  * 
@@ -20,7 +47,7 @@ import { logger } from "@/lib/logger";
  * - Loading states
  * - Error handling
  */
-export function ChatWindow() {
+export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWindowProps) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -46,7 +73,28 @@ export function ChatWindow() {
     },
     onSuccess: (data: ChatMessage) => {
       try {
-        // Add the assistant's message to the chat
+        const response = JSON.parse(data.content) as OrchestratorResponse;
+
+        // Handle design approval
+        if (response.type === "design" && response.status === "approved") {
+          onDesignApproved?.(response.imageUrl!);
+        }
+
+        // Handle product configuration updates
+        if (response.type === "design_and_products" && response.design?.status === "approved") {
+          onDesignApproved?.(response.design.imageUrl);
+          onProductConfigUpdate?.({
+            status: "selecting_product",
+            approved_design_url: response.design.imageUrl,
+            title: "",
+            description: "",
+            print_areas: {
+              front: { src: response.design.imageUrl }
+            },
+            variant_ids: []
+          });
+        }
+
         setMessages(prev => [...prev, {
           role: "assistant",
           content: data.content

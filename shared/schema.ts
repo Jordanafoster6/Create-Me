@@ -157,3 +157,20 @@ export const OrchestratorResponseSchema = z.discriminatedUnion("type", [
 ]);
 
 export type OrchestratorResponse = z.infer<typeof OrchestratorResponseSchema>;
+
+export const PrintifyProductConfigSchema = z.object({
+  title: z.string().optional(),
+  description: z.string().optional(),
+  blueprint_id: z.string().optional(),
+  print_areas: z.object({
+    front: z.object({
+      src: z.string()
+    })
+  }).optional(),
+  variant_ids: z.array(z.number()).optional(),
+  status: z.string().optional(),
+  approved_design_url: z.string().optional(),
+  metadata: z.record(z.unknown()).optional()
+});
+
+export type PrintifyProductConfig = z.infer<typeof PrintifyProductConfigSchema>;
