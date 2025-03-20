@@ -41,7 +41,7 @@ export class DesignAgent {
         analysis,
         originalPrompt: this.originalPrompt,
         currentPrompt: this.currentPrompt,
-        status: "success"
+        status: "refining" // Changed from 'success' to match enum
       };
 
       // Validate response format
@@ -53,7 +53,7 @@ export class DesignAgent {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error("Design Generation Error", { 
         error: errorMessage,
-        promptLength: prompt.length
+        promptLength: prompt.length 
       });
       throw new Error(`Design Generation Error: ${errorMessage}`);
     }
@@ -97,7 +97,7 @@ Keep the core elements while applying these modifications.`;
         analysis,
         originalPrompt: prevDesignData.originalPrompt,
         currentPrompt: this.currentPrompt,
-        status: "success"
+        status: "refining" // Changed from 'success' to match enum
       };
 
       // Validate response format
