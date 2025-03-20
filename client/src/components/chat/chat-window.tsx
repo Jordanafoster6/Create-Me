@@ -34,27 +34,19 @@ export function ChatWindow() {
         content: messageContent,
         role: "user",
       };
+      setMessages(prev => [...prev, userMessage]);
+
       const response = await apiRequest("POST", "/api/chat", userMessage);
-      return response.json();
+      const data = await response.json();
+      return data;
     },
     onSuccess: (data: ChatMessage) => {
       try {
-        let assistantContent = data.content;
-        try {
-          const parsedResponse = JSON.parse(data.content) as ChatResponse;
-          if (parsedResponse.type === "chat" && parsedResponse.message) {
-            assistantContent = parsedResponse.message;
-          }
-        } catch (error) {
-          console.warn("Could not parse assistant response as JSON:", error);
-        }
-
-        const assistantMessage: ChatMessage = {
+        // Add the assistant's message to the chat
+        setMessages(prev => [...prev, {
           role: "assistant",
-          content: assistantContent,
-        };
-
-        setMessages((prev) => [...prev, assistantMessage]);
+          content: data.content
+        }]);
 
         queryClient.invalidateQueries({ queryKey: ["/api/chat"] });
       } catch (error) {
@@ -78,12 +70,6 @@ export function ChatWindow() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-
-    const userMessage: ChatMessage = {
-      role: "user",
-      content: input,
-    };
-    setMessages((prev) => [...prev, userMessage]);
 
     sendMessage.mutate(input);
     setInput("");

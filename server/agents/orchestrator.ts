@@ -3,6 +3,7 @@ import { generateChatResponse } from "../services/openai";
 import { ProductResearchAgent } from "./product";
 import { DesignAgent } from "./design";
 import { ConfigurationAgent } from "./config";
+import { logger } from "../utils/logger";
 
 interface ParsedMessage {
   productDetails: {
@@ -19,41 +20,42 @@ export class OrchestratorAgent {
   private designAgent: DesignAgent;
   private configAgent: ConfigurationAgent;
   private context: Map<string, any>;
+  private messageHistory: ChatMessage[];
 
   constructor() {
     this.productAgent = new ProductResearchAgent();
     this.designAgent = new DesignAgent();
     this.configAgent = new ConfigurationAgent();
     this.context = new Map();
+    this.messageHistory = [];
   }
 
   async processMessage(message: ChatMessage): Promise<ChatMessage> {
     try {
+      // Add message to history
+      this.messageHistory.push(message);
+      logger.info("Processing new message", { role: message.role });
+
       // If we're in a design refinement loop, handle that separately
       if (this.context.get("designRefinementMode")) {
+        logger.info("Handling design refinement");
         return await this.handleDesignRefinement(message);
       }
 
       // If we're in product selection mode, handle that separately
       if (this.context.get("productSelectionMode")) {
+        logger.info("Handling product selection");
         return await this.handleProductSelection(message);
       }
 
       // Get initial parsing of user intent from OpenAI
-      const aiResponse = await generateChatResponse([{
-        role: "user",
-        content: `Parse this message into product details and design content. Respond with JSON:
+      const aiResponse = await generateChatResponse([
         {
-          "type": "parse",
-          "productDetails": {
-            "type": "product type if mentioned",
-            "color": "color if mentioned",
-            "size": "size if mentioned",
-            "material": "material if mentioned"
-          },
-          "designContent": "description of the design content only"
-        }`
-      }, message]);
+          role: "system",
+          content: "You are a product customization assistant. Parse user input for product details and design requirements."
+        },
+        ...this.messageHistory
+      ]);
 
       let parsedResponse;
       try {
@@ -80,7 +82,7 @@ export class OrchestratorAgent {
           };
         }
       } catch (error) {
-        console.error('Failed to parse AI response:', error);
+        logger.error('Failed to parse AI response:', error);
       }
 
       // Fallback response if parsing fails
@@ -92,7 +94,7 @@ export class OrchestratorAgent {
         })
       };
     } catch (error: any) {
-      console.error('Orchestration Error:', error);
+      logger.error('Orchestration Error:', error);
       throw new Error(`Orchestration Error: ${error?.message || 'Unknown error'}`);
     }
   }
