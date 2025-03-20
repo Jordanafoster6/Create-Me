@@ -310,4 +310,50 @@ export class OrchestratorAgent {
       throw new Error(`Product Selection Error: ${errorMessage}`);
     }
   }
+
+  /**
+   * Retrieves the current product creation status including approved design and selected product
+   * @returns Promise<ProductStatusResponse> Current status of the product creation process
+   */
+  async getProductStatus(): Promise<ProductStatusResponse> {
+    try {
+      const approvedDesign = this.context.get("designApproved") 
+        ? JSON.parse(this.context.get("currentDesign"))
+        : null;
+
+      const selectedProduct = this.context.get("selectedProduct");
+
+      // Only return approved design URL if design is approved
+      const status: ProductStatusResponse = {
+        approvedImageUrl: approvedDesign?.status === "approved" ? approvedDesign.imageUrl : undefined,
+        selectedProduct: selectedProduct ? {
+          productImg: selectedProduct.images[0],
+          productName: selectedProduct.title,
+          productDescription: selectedProduct.description || ""
+        } : undefined,
+        productConfigObject: this.context.get("productConfig")
+      };
+
+      logger.info("Retrieved product status", { 
+        hasApprovedImage: !!status.approvedImageUrl,
+        hasSelectedProduct: !!status.selectedProduct
+      });
+
+      return status;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error("Product Status Error", { error: errorMessage });
+      throw new Error(`Product Status Error: ${errorMessage}`);
+    }
+  }
+}
+
+interface ProductStatusResponse {
+  approvedImageUrl?: string;
+  selectedProduct?: {
+    productImg: string;
+    productName: string;
+    productDescription: string;
+  };
+  productConfigObject?: any;
 }

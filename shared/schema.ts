@@ -153,7 +153,7 @@ export const OrchestratorResponseSchema = z.discriminatedUnion("type", [
     products: z.array(PrintifyBlueprintSchema),
     message: z.string(),
     hasMore: z.boolean().optional(),
-    status: z.enum(["approved", "selecting"]) 
+    status: z.enum(["approved", "selecting"])
   })
 ]);
 
@@ -175,3 +175,15 @@ export const PrintifyProductConfigSchema = z.object({
 });
 
 export type PrintifyProductConfig = z.infer<typeof PrintifyProductConfigSchema>;
+
+export const ProductStatusResponseSchema = z.object({
+  approvedImageUrl: z.string().optional(),
+  selectedProduct: z.object({
+    productImg: z.string(),
+    productName: z.string(),
+    productDescription: z.string()
+  }).optional(),
+  productConfigObject: PrintifyProductConfigSchema.optional()
+});
+
+export type ProductStatusResponse = z.infer<typeof ProductStatusResponseSchema>;
