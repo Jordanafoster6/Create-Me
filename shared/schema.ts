@@ -2,7 +2,7 @@ import { pgTable, text, serial, integer, boolean, jsonb, timestamp } from "drizz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Base schemas
+// Base schemas and tables remain unchanged
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -51,7 +51,7 @@ export const insertMessageSchema = createInsertSchema(messages);
 export const insertDesignSchema = createInsertSchema(designs);
 export const insertProductSchema = createInsertSchema(products);
 
-// Types
+// Database Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Conversation = typeof conversations.$inferSelect;
@@ -59,7 +59,7 @@ export type Message = typeof messages.$inferSelect;
 export type Design = typeof designs.$inferSelect;
 export type Product = typeof products.$inferSelect;
 
-// API Types
+// API Request/Response Types
 export const ChatMessageSchema = z.object({
   content: z.string(),
   role: z.enum(["user", "assistant"]),
@@ -77,23 +77,57 @@ export const ProductConfigSchema = z.object({
   placementData: z.record(z.any()),
 });
 
+// Shared Types
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 export type DesignRequest = z.infer<typeof DesignRequestSchema>;
 export type ProductConfig = z.infer<typeof ProductConfigSchema>;
 
+// Design Response Types
 export const DesignAnalysisSchema = z.object({
   imageAnalysis: z.object({
-    description: z.string()
+    description: z.string(),
   }),
-  suggestions: z.record(z.string())
+  suggestions: z.record(z.string()),
 });
 
 export const DesignResponseSchema = z.object({
   type: z.literal("design"),
   imageUrl: z.string(),
   analysis: z.string(),
-  status: z.string()
+  originalPrompt: z.string(),
+  currentPrompt: z.string(),
+  status: z.string(),
 });
 
+// Product Response Types
+export const PrintifyVariantSchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  price: z.number(),
+  is_enabled: z.boolean(),
+  options: z.record(z.string()).optional(),
+});
+
+export const PrintifyBlueprintSchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  description: z.string().optional(),
+  brand: z.string().optional(),
+  model: z.string().optional(),
+  images: z.array(z.string()),
+  variants: z.array(PrintifyVariantSchema).optional(),
+});
+
+export const ProductSearchResponseSchema = z.object({
+  products: z.array(PrintifyBlueprintSchema),
+  hasMore: z.boolean(),
+  totalRemaining: z.number(),
+  status: z.string(),
+});
+
+// Export Types
 export type DesignAnalysis = z.infer<typeof DesignAnalysisSchema>;
 export type DesignResponse = z.infer<typeof DesignResponseSchema>;
+export type PrintifyVariant = z.infer<typeof PrintifyVariantSchema>;
+export type PrintifyBlueprint = z.infer<typeof PrintifyBlueprintSchema>;
+export type ProductSearchResponse = z.infer<typeof ProductSearchResponseSchema>;

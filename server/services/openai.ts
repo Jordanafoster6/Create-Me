@@ -1,5 +1,10 @@
 import OpenAI from "openai";
 import { ChatMessage } from "@shared/schema";
+import { logger } from "../utils/logger";
+
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error("Missing OPENAI_API_KEY environment variable");
+}
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -7,6 +12,12 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 // do not change this unless explicitly requested by the user
 const GPT_MODEL = "gpt-4o";
 
+/**
+ * Generates a chat response using OpenAI's GPT model
+ * @param messages Array of previous chat messages for context
+ * @returns Promise<string> Generated response content
+ * @throws Error if API call fails or returns invalid response
+ */
 export async function generateChatResponse(messages: ChatMessage[]): Promise<string> {
   try {
     const systemMessage = {
@@ -50,13 +61,28 @@ Always respond with properly formatted JSON.`
       response_format: { type: "json_object" }
     });
 
-    return response.choices[0].message.content || "";
-  } catch (error: any) {
-    console.error('OpenAI Chat Error:', error);
-    throw new Error(`OpenAI Chat Error: ${error?.message || 'Unknown error'}`);
+    if (!response.choices[0].message.content) {
+      throw new Error("Empty response from OpenAI");
+    }
+
+    logger.info("Successfully generated chat response");
+    return response.choices[0].message.content;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error("OpenAI Chat Error", { 
+      error: errorMessage,
+      messages: messages.map(m => ({ role: m.role })) // Log roles only for privacy
+    });
+    throw new Error(`OpenAI Chat Error: ${errorMessage}`);
   }
 }
 
+/**
+ * Generates an image using DALL-E based on the provided prompt
+ * @param prompt Text description of the image to generate
+ * @returns Promise<string> URL of the generated image
+ * @throws Error if image generation fails
+ */
 export async function generateImage(prompt: string): Promise<string> {
   try {
     const response = await openai.images.generate({
@@ -71,13 +97,24 @@ export async function generateImage(prompt: string): Promise<string> {
       throw new Error("No image URL returned from DALL-E");
     }
 
+    logger.info("Successfully generated image", { promptLength: prompt.length });
     return response.data[0].url;
-  } catch (error: any) {
-    console.error('DALL-E Image Generation Error:', error);
-    throw new Error(`DALL-E Image Generation Error: ${error?.message || 'Unknown error'}`);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error("DALL-E Image Generation Error", { 
+      error: errorMessage,
+      promptLength: prompt.length 
+    });
+    throw new Error(`DALL-E Image Generation Error: ${errorMessage}`);
   }
 }
 
+/**
+ * Analyzes an image using GPT-4 Vision
+ * @param imageUrl URL of the image to analyze
+ * @returns Promise<string> JSON string containing analysis results
+ * @throws Error if analysis fails
+ */
 export async function analyzeImage(imageUrl: string): Promise<string> {
   try {
     const response = await openai.chat.completions.create({
@@ -86,17 +123,29 @@ export async function analyzeImage(imageUrl: string): Promise<string> {
         {
           role: "user",
           content: [
-            { type: "text", text: "Analyze this image and provide feedback in JSON format. Include suggestions for product printing improvements:" },
-            { type: "image_url", image_url: { url: imageUrl } }
+            { 
+              type: "text", 
+              text: "Analyze this image and provide feedback in JSON format. Include suggestions for product printing improvements:" 
+            },
+            { 
+              type: "image_url", 
+              image_url: { url: imageUrl } 
+            }
           ],
         },
       ],
       response_format: { type: "json_object" }
     });
 
-    return response.choices[0].message.content || "No analysis available";
-  } catch (error: any) {
-    console.error('Image Analysis Error:', error);
-    throw new Error(`Image Analysis Error: ${error?.message || 'Unknown error'}`);
+    if (!response.choices[0].message.content) {
+      throw new Error("Empty analysis from OpenAI");
+    }
+
+    logger.info("Successfully analyzed image");
+    return response.choices[0].message.content;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error("Image Analysis Error", { error: errorMessage });
+    throw new Error(`Image Analysis Error: ${errorMessage}`);
   }
 }
