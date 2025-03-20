@@ -8,6 +8,8 @@ import { QuickActions } from "./quick-actions";
 import { ChatMessage } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAppDispatch } from "@/store";
+import { updateProductDetails, setSelectedProduct } from "@/store/chat-slice";
 
 interface ChatResponse {
   type: string;
@@ -15,6 +17,7 @@ interface ChatResponse {
   imageUrl?: string;
   products?: any[];
   status?: string;
+  design?: any;
 }
 
 export function ChatWindow() {
@@ -27,6 +30,7 @@ export function ChatWindow() {
     },
   ]);
   const { toast } = useToast();
+  const dispatch = useAppDispatch();
 
   const sendMessage = useMutation({
     mutationFn: async (messageContent: string) => {
@@ -42,7 +46,35 @@ export function ChatWindow() {
         let assistantContent = data.content;
         try {
           const parsedResponse = JSON.parse(data.content) as ChatResponse;
-          if (parsedResponse.type === "chat" && parsedResponse.message) {
+
+          // Update the store based on response type
+          if (parsedResponse.type === "design_and_products") {
+            if (parsedResponse.design?.imageUrl) {
+              dispatch(updateProductDetails({
+                designUrl: parsedResponse.design.imageUrl
+              }));
+            }
+            if (parsedResponse.products?.[0]) {
+              dispatch(setSelectedProduct({
+                id: parsedResponse.products[0].id,
+                name: parsedResponse.products[0].title,
+                variantId: parsedResponse.products[0].variants?.[0]?.id || 1
+              }));
+              dispatch(updateProductDetails({
+                blueprint_id: parsedResponse.products[0].id,
+                title: parsedResponse.products[0].title,
+                description: parsedResponse.products[0].description,
+                images: parsedResponse.products[0].images,
+                variants: parsedResponse.products[0].variants
+              }));
+            }
+            assistantContent = parsedResponse.message || '';
+          } else if (parsedResponse.type === "design" && parsedResponse.imageUrl) {
+            dispatch(updateProductDetails({
+              designUrl: parsedResponse.imageUrl
+            }));
+            assistantContent = parsedResponse.message || parsedResponse.imageUrl;
+          } else if (parsedResponse.type === "chat" && parsedResponse.message) {
             assistantContent = parsedResponse.message;
           }
         } catch (error) {
