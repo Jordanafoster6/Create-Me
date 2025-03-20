@@ -131,3 +131,29 @@ export type DesignResponse = z.infer<typeof DesignResponseSchema>;
 export type PrintifyVariant = z.infer<typeof PrintifyVariantSchema>;
 export type PrintifyBlueprint = z.infer<typeof PrintifyBlueprintSchema>;
 export type ProductSearchResponse = z.infer<typeof ProductSearchResponseSchema>;
+
+// Add these new type definitions after the existing ones
+export const OrchestratorResponseSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("chat"),
+    message: z.string()
+  }),
+  z.object({
+    type: z.literal("design"),
+    imageUrl: z.string(),
+    analysis: z.string(),
+    originalPrompt: z.string(),
+    currentPrompt: z.string(),
+    message: z.string().optional(),
+    status: z.string()
+  }),
+  z.object({
+    type: z.literal("design_and_products"),
+    design: DesignResponseSchema,
+    products: z.array(PrintifyBlueprintSchema),
+    message: z.string(),
+    hasMore: z.boolean().optional()
+  })
+]);
+
+export type OrchestratorResponse = z.infer<typeof OrchestratorResponseSchema>;
