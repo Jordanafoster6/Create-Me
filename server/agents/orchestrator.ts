@@ -63,9 +63,12 @@ export class OrchestratorAgent {
           this.context.set("currentProductDetails", parsedResponse.productDetails);
           this.context.set("currentDesignContent", parsedResponse.designContent);
 
-          // First focus on getting the design right
+          // Generate initial design
           const designResponse = await this.designAgent.generateDesign(parsedResponse.designContent);
+          console.log('Design response from agent:', designResponse);
+
           const designData = JSON.parse(designResponse);
+          console.log('Parsed design data:', designData);
 
           // Enter design refinement mode
           this.context.set("designRefinementMode", true);
@@ -125,6 +128,9 @@ export class OrchestratorAgent {
         const productData = JSON.parse(productResponse);
         const currentDesign = JSON.parse(this.context.get("currentDesign"));
 
+        console.log('Current design data:', currentDesign);
+        console.log('Product data:', productData);
+
         return {
           role: "assistant",
           content: JSON.stringify({
@@ -143,7 +149,10 @@ export class OrchestratorAgent {
           this.context.get("currentDesign"),
           parsedResponse.changes
         );
+
+        console.log('New design response:', newDesign);
         const designData = JSON.parse(newDesign);
+        console.log('Parsed new design data:', designData);
 
         // Update the current design in context
         this.context.set("currentDesign", newDesign);

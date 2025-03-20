@@ -16,11 +16,12 @@ export function Message({ message }: MessageProps) {
   let products = null;
   let jsonContent: any = null;
   let designUrl: string | null = null;
+  console.log(message);
 
   if (!isUser) {
     try {
       jsonContent = JSON.parse(message.content);
-      console.log('Parsed message content:', jsonContent);
+      console.log("Parsed message content:", jsonContent);
 
       if (jsonContent.type === "design_and_products") {
         contentType = "design_and_products";
@@ -47,16 +48,11 @@ export function Message({ message }: MessageProps) {
   }
 
   return (
-    <div
-      className={cn(
-        "flex mb-4",
-        isUser ? "justify-end" : "justify-start"
-      )}
-    >
+    <div className={cn("flex mb-4", isUser ? "justify-end" : "justify-start")}>
       <Card
         className={cn(
           "max-w-[80%] p-4",
-          isUser ? "bg-primary text-primary-foreground" : "bg-secondary"
+          isUser ? "bg-primary text-primary-foreground" : "bg-secondary",
         )}
       >
         {contentType === "design_and_products" ? (
@@ -78,16 +74,19 @@ export function Message({ message }: MessageProps) {
                     <p className="text-sm text-muted-foreground">
                       {analysis.imageAnalysis.description}
                     </p>
-                    {analysis.suggestions && Object.entries(analysis.suggestions).length > 0 && (
-                      <>
-                        <h4 className="font-medium mt-3">Suggestions:</h4>
-                        <ul className="text-sm text-muted-foreground list-disc pl-4">
-                          {Object.entries(analysis.suggestions).map(([key, value]) => (
-                            <li key={key}>{value}</li>
-                          ))}
-                        </ul>
-                      </>
-                    )}
+                    {analysis.suggestions &&
+                      Object.entries(analysis.suggestions).length > 0 && (
+                        <>
+                          <h4 className="font-medium mt-3">Suggestions:</h4>
+                          <ul className="text-sm text-muted-foreground list-disc pl-4">
+                            {Object.entries(analysis.suggestions).map(
+                              ([key, value]) => (
+                                <li key={key}>{value}</li>
+                              ),
+                            )}
+                          </ul>
+                        </>
+                      )}
                   </div>
                 )}
               </>
@@ -99,7 +98,7 @@ export function Message({ message }: MessageProps) {
                   {products.map((product: any, index: number) => (
                     <ProductPreview
                       key={index}
-                      imageUrl={product.images?.[0] || ''}
+                      imageUrl={product.images?.[0] || ""}
                       productName={product.title || `Product ${index + 1}`}
                     />
                   ))}
@@ -125,16 +124,19 @@ export function Message({ message }: MessageProps) {
                 <p className="text-sm text-muted-foreground">
                   {analysis.imageAnalysis.description}
                 </p>
-                {analysis.suggestions && Object.entries(analysis.suggestions).length > 0 && (
-                  <>
-                    <h4 className="font-medium mt-3">Suggestions:</h4>
-                    <ul className="text-sm text-muted-foreground list-disc pl-4">
-                      {Object.entries(analysis.suggestions).map(([key, value]) => (
-                        <li key={key}>{value}</li>
-                      ))}
-                    </ul>
-                  </>
-                )}
+                {analysis.suggestions &&
+                  Object.entries(analysis.suggestions).length > 0 && (
+                    <>
+                      <h4 className="font-medium mt-3">Suggestions:</h4>
+                      <ul className="text-sm text-muted-foreground list-disc pl-4">
+                        {Object.entries(analysis.suggestions).map(
+                          ([key, value]) => (
+                            <li key={key}>{value}</li>
+                          ),
+                        )}
+                      </ul>
+                    </>
+                  )}
               </div>
             )}
           </div>
