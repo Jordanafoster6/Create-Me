@@ -41,7 +41,14 @@ export class ProductResearchAgent {
       // Get next batch of unshown products
       const nextBatch = this.rankedBlueprints
         .filter(product => !this.shownProducts.has(product.id))
-        .slice(0, this.BATCH_SIZE);
+        .slice(0, this.BATCH_SIZE)
+        .map(blueprint => ({
+          ...blueprint,
+          // Ensure we always have an images array with at least one item
+          images: blueprint.images || 
+                 (blueprint.image ? [blueprint.image] : null) ||
+                 (blueprint.preview ? [blueprint.preview] : [])
+        }));
 
       // Mark these products as shown
       nextBatch.forEach(product => this.shownProducts.add(product.id));
