@@ -15,7 +15,6 @@ export function Message({ message }: MessageProps) {
   if (!isUser && message.content) {
     try {
       response = JSON.parse(message.content);
-      console.log("Parsed message response:", response);
     } catch (error) {
       console.warn("Message is not JSON:", message.content);
     }
@@ -44,18 +43,20 @@ export function Message({ message }: MessageProps) {
             )}
 
             {/* Display design with optional products */}
-            {response.type === "design_and_products" && (
+            {(response.type === "design" || response.type === "design_and_products") && (
               <>
                 {/* Message */}
-                <p className="text-sm mb-2">{response.message}</p>
+                {response.message && (
+                  <p className="text-sm mb-2">{response.message}</p>
+                )}
 
-                {/* Only show design if we're not in product selection mode */}
-                {response.status !== "selecting" && (
+                {/* Design Image */}
+                {(response.type === "design" ? response : response.design) && (
                   <>
                     <p className="text-sm mb-2">Here's your design:</p>
                     <AspectRatio ratio={1}>
                       <img
-                        src={response.design.imageUrl}
+                        src={response.type === "design" ? response.imageUrl : response.design.imageUrl}
                         alt="Generated design"
                         className="rounded-md object-cover w-full h-full"
                       />
@@ -64,12 +65,14 @@ export function Message({ message }: MessageProps) {
                 )}
 
                 {/* Analysis */}
-                {response.design?.analysis && (
+                {(response.type === "design" ? response.analysis : response.design?.analysis) && (
                   <div className="mt-4 space-y-2">
                     <h4 className="font-medium">Design Analysis:</h4>
                     {(() => {
                       try {
-                        const analysis: DesignAnalysis = JSON.parse(response.design.analysis);
+                        const analysis: DesignAnalysis = JSON.parse(
+                          response.type === "design" ? response.analysis : response.design.analysis
+                        );
                         if (!analysis?.imageAnalysis?.description) return null;
 
                         return (
@@ -98,7 +101,7 @@ export function Message({ message }: MessageProps) {
                 )}
 
                 {/* Products Grid */}
-                {response.products && response.products.length > 0 && response.status === "selecting" && (
+                {response.type === "design_and_products" && response.products && response.products.length > 0 && (
                   <div className="mt-6">
                     <h4 className="font-medium mb-3">Available Products:</h4>
                     <div className="grid grid-cols-2 gap-4">

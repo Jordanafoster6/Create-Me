@@ -15,6 +15,17 @@ interface ChatWindowProps {
   onProductConfigUpdate?: (config: PrintifyProductConfig) => void;
 }
 
+/**
+ * ChatWindow Component
+ * 
+ * Handles the main chat interface including:
+ * - Message input and submission
+ * - Message history display
+ * - Quick action buttons
+ * - Loading states
+ * - Error handling
+ * - Design approval and product configuration callbacks
+ */
 export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWindowProps) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -25,27 +36,7 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
   ]);
   const { toast } = useToast();
 
-  // Initialize empty product config
-  useState(() => {
-    onProductConfigUpdate?.({
-      status: "pending",
-      title: "",
-      description: "",
-      blueprint_id: "",
-      print_areas: { front: { src: "" } },
-      variant_ids: [],
-      metadata: {}
-    });
-  }, []);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!input.trim()) return;
-
-    sendMessage.mutate(input);
-    setInput("");
-  }
-
+  // Message sending mutation
   const sendMessage = useMutation({
     mutationFn: async (messageContent: string) => {
       const userMessage: ChatMessage = {
@@ -60,55 +51,33 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
     },
     onSuccess: (data: ChatMessage) => {
       try {
-        // Add the assistant's message to the chat first
+        const response = JSON.parse(data.content) as OrchestratorResponse;
+        logger.info("Processing chat response", { type: response.type });
+
+        // Add the assistant's message to the chat
         setMessages(prev => [...prev, {
           role: "assistant",
           content: data.content
         }]);
 
-        const response = JSON.parse(data.content) as OrchestratorResponse;
-        logger.info("Processing chat response", { type: response.type });
+        // Only trigger design approval when the design is actually approved
+        if (response.type === "design_and_products" && response.status === "approved") {
+          logger.info("Design approved", { imageUrl: response.design.imageUrl });
+          onDesignApproved?.(response.design.imageUrl);
 
-        // Handle design approval
-        if (response.type === "design_and_products") {
-          if (response.status === "selecting") {
-            // Update config when design is approved
-            const config: PrintifyProductConfig = {
-              status: "design_approved",
-              title: "",
-              description: "",
-              blueprint_id: "",
-              approved_design_url: response.design.imageUrl,
-              print_areas: { front: { src: "" } },
-              variant_ids: [],
-              metadata: {}
-            };
-            onProductConfigUpdate?.(config);
-            onDesignApproved?.(response.design.imageUrl);
-          } else if (response.status === "approved") {
-            // Update config when product is selected
-            const product = response.products[0];
-            const config: PrintifyProductConfig = {
-              status: "product_selected",
-              approved_design_url: response.design.imageUrl,
-              title: product.title,
-              description: product.description || "",
-              blueprint_id: product.id.toString(),
-              print_areas: {
-                front: { 
-                  src: product.images[0] 
-                }
-              },
-              variant_ids: product.variants?.map(v => v.id) || [],
-              metadata: {
-                brand: product.brand,
-                model: product.model
-              }
-            };
-
-            logger.info("Updating product config", { config });
-            onProductConfigUpdate?.(config);
-          }
+          const config: PrintifyProductConfig = {
+            status: "selecting_product",
+            approved_design_url: response.design.imageUrl,
+            title: "",
+            description: "",
+            print_areas: {
+              front: { src: response.design.imageUrl }
+            },
+            variant_ids: [],
+            metadata: {}
+          };
+          logger.info("Updating product config", { config });
+          onProductConfigUpdate?.(config);
         }
 
         queryClient.invalidateQueries({ queryKey: ["/api/chat"] });
@@ -131,6 +100,14 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
       });
     },
   });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    sendMessage.mutate(input);
+    setInput("");
+  };
 
   return (
     <div className="flex flex-col h-full">

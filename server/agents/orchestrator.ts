@@ -1,4 +1,4 @@
-import { ChatMessage, OrchestratorResponse, OrchestratorResponseSchema, PrintifyBlueprint } from "@shared/schema";
+import { ChatMessage, OrchestratorResponse, OrchestratorResponseSchema } from "@shared/schema";
 import { generateChatResponse } from "../services/openai";
 import { ProductResearchAgent } from "./product";
 import { DesignAgent } from "./design";
@@ -138,7 +138,7 @@ export class OrchestratorAgent {
       ]);
 
       const parsed = JSON.parse(aiResponse) as ParsedMessage;
-      logger.info("Successfully parsed user intent", {
+      logger.info("Successfully parsed user intent", { 
         productType: parsed.productDetails.type,
         hasDesignContent: Boolean(parsed.designContent)
       });
@@ -170,6 +170,7 @@ export class OrchestratorAgent {
       logger.info("Processing design feedback", { isApproved: feedback.isApproved });
 
       if (feedback.isApproved) {
+        // Move to product selection phase
         this.context.set("designRefinementMode", false);
         this.context.set("designApproved", true);
         this.context.set("productSelectionMode", true);
@@ -177,14 +178,13 @@ export class OrchestratorAgent {
         const productDetails = this.context.get("currentProductDetails");
         const productResponse = await this.productAgent.handleSearch(productDetails);
         const { products, hasMore } = JSON.parse(productResponse);
-        this.context.set("currentProducts", productResponse);
 
         const response: OrchestratorResponse = {
           type: "design_and_products",
           design: JSON.parse(this.context.get("currentDesign")),
           products,
           hasMore,
-          status: "selecting",
+          status: "approved", // Add status to indicate this is an approved design
           message: `Perfect! I've found some products that match your requirements. Take a look at these options and let me know which one you prefer. ${hasMore ? "\n\nIf none of these are quite right, I can show you more options." : ""}`
         };
 
@@ -193,11 +193,13 @@ export class OrchestratorAgent {
           content: JSON.stringify(OrchestratorResponseSchema.parse(response))
         };
       } else {
+        // Modify the design based on feedback
         const newDesign = await this.designAgent.modifyDesign(
           this.context.get("currentDesign"),
           feedback.changes
         );
 
+        // Even if analysis failed, we can still return the new design
         const designData = JSON.parse(newDesign);
 
         const response: OrchestratorResponse = {
@@ -205,7 +207,7 @@ export class OrchestratorAgent {
           imageUrl: designData.imageUrl,
           originalPrompt: designData.originalPrompt,
           currentPrompt: designData.currentPrompt,
-          status: "refining",
+          status: "refining", // Add status to indicate this is still being refined
           message: "I've updated the design based on your feedback. How does this look now?"
         };
 
@@ -227,23 +229,24 @@ export class OrchestratorAgent {
     }
   }
 
+  /**
+   * Handles the product selection phase of the conversation
+   * 
+   * @param message User's product selection or request for more options
+   * @returns Promise<ChatMessage> Response with either more products or confirmation
+   */
   private async handleProductSelection(message: ChatMessage): Promise<ChatMessage> {
     try {
       const selectionResponse = await generateChatResponse([
         {
           role: "user",
-          content: `Determine if this message selects a specific product. 
-          Respond with JSON: { 
-            type: 'product_selection', 
-            wantsMore: boolean, 
-            selectedIndex: number // Index of the selected product (0-based), or -1 if no selection
-          }`
+          content: "Determine if this message requests more product options. Respond with JSON: { type: 'product_selection', wantsMore: boolean, selectedProduct: number or null }"
         },
         message
       ]);
 
       const selection = JSON.parse(selectionResponse);
-      logger.info("Processing product selection", { selection });
+      logger.info("Processing product selection", { wantsMore: selection.wantsMore });
 
       if (selection.wantsMore) {
         const productDetails = this.context.get("currentProductDetails");
@@ -267,7 +270,7 @@ export class OrchestratorAgent {
           design: JSON.parse(this.context.get("currentDesign")),
           products,
           hasMore,
-          status: "selecting",
+          status: "selecting", // Add required status
           message: `Here are some more options that match your requirements. ${hasMore ? `\n\nThere are ${totalRemaining} more options available if none of these are quite right.` : ""}`
         };
 
@@ -277,25 +280,13 @@ export class OrchestratorAgent {
         };
       }
 
-      if (selection.selectedIndex >= 0) {
+      if (selection.selectedProduct !== null) {
         this.context.set("productSelectionMode", false);
-
-        const productsResponse = JSON.parse(this.context.get("currentProducts"));
-        const products = productsResponse.products as PrintifyBlueprint[];
-        const selectedProduct = products[selection.selectedIndex];
-
-        if (!selectedProduct) {
-          throw new Error(`No product found at index ${selection.selectedIndex}`);
-        }
-
-        logger.info("Selected product:", { selectedProduct });
+        this.context.set("selectedProduct", selection.selectedProduct);
 
         const response: OrchestratorResponse = {
-          type: "design_and_products",
-          design: JSON.parse(this.context.get("currentDesign")),
-          products: [selectedProduct],
-          status: "approved",
-          message: `Great choice! We'll add your design to the ${selectedProduct.title}.`
+          type: "chat",
+          message: "Great choice! Let's configure your selected product with the design we created."
         };
 
         return {
@@ -306,7 +297,7 @@ export class OrchestratorAgent {
 
       const response: OrchestratorResponse = {
         type: "chat",
-        message: "I'm not sure which product you'd like to select. Could you please specify which one you prefer, or let me know if you'd like to see more options?"
+        message: "I'm not sure if you'd like to see more options or if you've chosen a product. Could you please clarify?"
       };
 
       return {
