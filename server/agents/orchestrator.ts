@@ -4,6 +4,7 @@ import { ProductResearchAgent } from "./product";
 import { DesignAgent } from "./design";
 import { ConfigurationAgent } from "./config";
 import { logger } from "../utils/logger";
+import {PrintifyBlueprint} from "@shared/types";
 
 interface ParsedMessage {
   type: "parse";
@@ -286,8 +287,8 @@ export class OrchestratorAgent {
         this.context.set("selectedProduct", selection.selectedProduct);
 
         // Get the selected product from context
-        const products = JSON.parse(this.context.get("currentProducts"));
-        const selectedProduct = products.find((p: any) => p.id === selection.selectedProduct);
+        const productsResponse = JSON.parse(this.context.get("currentProducts"));
+        const selectedProduct = productsResponse.products.find((p: PrintifyBlueprint) => p.id === selection.selectedProduct);
 
         if (!selectedProduct) {
           throw new Error("Selected product not found");
