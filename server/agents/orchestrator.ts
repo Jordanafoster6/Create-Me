@@ -72,7 +72,7 @@ export class OrchestratorAgent {
 
           // Enter design refinement mode
           this.context.set("designRefinementMode", true);
-          this.context.set("currentDesign", designResponse);
+          this.context.set("currentDesign", designData);
 
           return {
             role: "assistant",
@@ -126,7 +126,7 @@ export class OrchestratorAgent {
         const productDetails = this.context.get("currentProductDetails");
         const productResponse = await this.productAgent.handleSearch(productDetails);
         const productData = JSON.parse(productResponse);
-        const currentDesign = JSON.parse(this.context.get("currentDesign"));
+        const currentDesign = this.context.get("currentDesign");
 
         console.log('Current design data:', currentDesign);
         console.log('Product data:', productData);
@@ -146,7 +146,7 @@ export class OrchestratorAgent {
       } else {
         // Generate new design based on requested changes
         const newDesign = await this.designAgent.modifyDesign(
-          this.context.get("currentDesign"),
+          JSON.stringify(this.context.get("currentDesign")),
           parsedResponse.changes
         );
 
@@ -155,7 +155,7 @@ export class OrchestratorAgent {
         console.log('Parsed new design data:', designData);
 
         // Update the current design in context
-        this.context.set("currentDesign", newDesign);
+        this.context.set("currentDesign", designData);
 
         return {
           role: "assistant",
@@ -182,7 +182,7 @@ export class OrchestratorAgent {
         {
           "type": "product_selection",
           "wantsMore": boolean,
-          "selectedProduct": number or null
+          "selectedProduct": number | null
         }`
       }, message]);
 
@@ -208,7 +208,7 @@ export class OrchestratorAgent {
           role: "assistant",
           content: JSON.stringify({
             type: "design_and_products",
-            design: JSON.parse(this.context.get("currentDesign")),
+            design: this.context.get("currentDesign"),
             products: products,
             message: `Here are some more options that match your requirements. ${hasMore ? `\n\nThere are ${totalRemaining} more options available if none of these are quite right.` : "\n\nThese are the last available options that match your requirements."}`
           })
