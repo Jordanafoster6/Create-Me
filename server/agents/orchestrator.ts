@@ -55,9 +55,8 @@ export class OrchestratorAgent {
         }`
       }, message]);
 
-      let parsedResponse;
       try {
-        parsedResponse = JSON.parse(aiResponse);
+        const parsedResponse = JSON.parse(aiResponse);
         if (parsedResponse.type === "parse") {
           // Store the parsed details in context
           this.context.set("currentProductDetails", parsedResponse.productDetails);
@@ -145,8 +144,9 @@ export class OrchestratorAgent {
         };
       } else {
         // Generate new design based on requested changes
+        const currentDesign = this.context.get("currentDesign");
         const newDesign = await this.designAgent.modifyDesign(
-          JSON.stringify(this.context.get("currentDesign")),
+          currentDesign,
           parsedResponse.changes
         );
 
@@ -193,6 +193,7 @@ export class OrchestratorAgent {
         const productDetails = this.context.get("currentProductDetails");
         const productResponse = await this.productAgent.handleSearch(productDetails, false);
         const { products, hasMore, totalRemaining } = JSON.parse(productResponse);
+        const currentDesign = this.context.get("currentDesign");
 
         if (products.length === 0) {
           return {
@@ -208,7 +209,10 @@ export class OrchestratorAgent {
           role: "assistant",
           content: JSON.stringify({
             type: "design_and_products",
-            design: this.context.get("currentDesign"),
+            design: {
+              imageUrl: currentDesign.imageUrl,
+              analysis: currentDesign.analysis
+            },
             products: products,
             message: `Here are some more options that match your requirements. ${hasMore ? `\n\nThere are ${totalRemaining} more options available if none of these are quite right.` : "\n\nThese are the last available options that match your requirements."}`
           })

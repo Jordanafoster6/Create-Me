@@ -14,14 +14,13 @@ export function Message({ message }: MessageProps) {
   let contentType = "text";
   let analysis: DesignAnalysis | null = null;
   let products = null;
-  let jsonContent: any = null;
   let designUrl: string | null = null;
-  console.log(message);
+  console.log('Processing message:', message);
 
   if (!isUser) {
     try {
-      jsonContent = JSON.parse(message.content);
-      console.log("Parsed message content:", jsonContent);
+      const jsonContent = JSON.parse(message.content);
+      console.log('Parsed message content:', jsonContent);
 
       if (jsonContent.type === "design_and_products") {
         contentType = "design_and_products";
@@ -68,27 +67,6 @@ export function Message({ message }: MessageProps) {
                     className="rounded-md object-cover w-full h-full"
                   />
                 </AspectRatio>
-                {analysis?.imageAnalysis && (
-                  <div className="mt-4 space-y-2">
-                    <h4 className="font-medium">Design Analysis:</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {analysis.imageAnalysis.description}
-                    </p>
-                    {analysis.suggestions &&
-                      Object.entries(analysis.suggestions).length > 0 && (
-                        <>
-                          <h4 className="font-medium mt-3">Suggestions:</h4>
-                          <ul className="text-sm text-muted-foreground list-disc pl-4">
-                            {Object.entries(analysis.suggestions).map(
-                              ([key, value]) => (
-                                <li key={key}>{value}</li>
-                              ),
-                            )}
-                          </ul>
-                        </>
-                      )}
-                  </div>
-                )}
               </>
             )}
             {products && products.length > 0 && (
@@ -98,7 +76,7 @@ export function Message({ message }: MessageProps) {
                   {products.map((product: any, index: number) => (
                     <ProductPreview
                       key={index}
-                      imageUrl={product.images?.[0] || ""}
+                      imageUrl={product.images?.[0] || ''}
                       productName={product.title || `Product ${index + 1}`}
                     />
                   ))}
