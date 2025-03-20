@@ -15,17 +15,6 @@ interface ChatWindowProps {
   onProductConfigUpdate?: (config: PrintifyProductConfig) => void;
 }
 
-/**
- * ChatWindow Component
- * 
- * Handles the main chat interface including:
- * - Message input and submission
- * - Message history display
- * - Quick action buttons
- * - Loading states
- * - Error handling
- * - Design approval and product configuration callbacks
- */
 export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWindowProps) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -35,6 +24,19 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
     },
   ]);
   const { toast } = useToast();
+
+  // Initialize empty product config
+  useState(() => {
+    onProductConfigUpdate?.({
+      status: "pending",
+      title: "",
+      description: "",
+      blueprint_id: "",
+      print_areas: { front: { src: "" } },
+      variant_ids: [],
+      metadata: {}
+    });
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -67,38 +69,46 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
         const response = JSON.parse(data.content) as OrchestratorResponse;
         logger.info("Processing chat response", { type: response.type });
 
-        // Handle product selection and design approval
-        if (response.type === "design_and_products" && response.status === "approved") {
-          logger.info("Design and product approved", { 
-            imageUrl: response.design.imageUrl,
-            selectedProduct: response.products[0]
-          });
-
-          // Get the selected product
-          const product = response.products[0];
-
-          // Create the product configuration
-          const config: PrintifyProductConfig = {
-            status: "product_selected",
-            approved_design_url: response.design.imageUrl,
-            title: product.title,
-            description: product.description || "",
-            blueprint_id: product.id.toString(),
-            print_areas: {
-              front: { 
-                src: product.images[0] 
+        // Handle design approval
+        if (response.type === "design_and_products") {
+          if (response.status === "selecting") {
+            // Update config when design is approved
+            const config: PrintifyProductConfig = {
+              status: "design_approved",
+              title: "",
+              description: "",
+              blueprint_id: "",
+              approved_design_url: response.design.imageUrl,
+              print_areas: { front: { src: "" } },
+              variant_ids: [],
+              metadata: {}
+            };
+            onProductConfigUpdate?.(config);
+            onDesignApproved?.(response.design.imageUrl);
+          } else if (response.status === "approved") {
+            // Update config when product is selected
+            const product = response.products[0];
+            const config: PrintifyProductConfig = {
+              status: "product_selected",
+              approved_design_url: response.design.imageUrl,
+              title: product.title,
+              description: product.description || "",
+              blueprint_id: product.id.toString(),
+              print_areas: {
+                front: { 
+                  src: product.images[0] 
+                }
+              },
+              variant_ids: product.variants?.map(v => v.id) || [],
+              metadata: {
+                brand: product.brand,
+                model: product.model
               }
-            },
-            variant_ids: product.variants?.map(v => v.id) || [],
-            metadata: {
-              brand: product.brand,
-              model: product.model
-            }
-          };
+            };
 
-          logger.info("Updating product config", { config });
-          onProductConfigUpdate?.(config);
-          onDesignApproved?.(response.design.imageUrl);
+            logger.info("Updating product config", { config });
+            onProductConfigUpdate?.(config);
+          }
         }
 
         queryClient.invalidateQueries({ queryKey: ["/api/chat"] });
