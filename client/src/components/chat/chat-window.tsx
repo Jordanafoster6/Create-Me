@@ -36,7 +36,6 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
   ]);
   const { toast } = useToast();
 
-  // Message sending mutation
   const sendMessage = useMutation({
     mutationFn: async (messageContent: string) => {
       const userMessage: ChatMessage = {
@@ -60,7 +59,7 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
         const response = JSON.parse(data.content) as OrchestratorResponse;
         logger.info("Processing chat response", { type: response.type });
 
-        // Only trigger design approval and product config when the design is actually approved
+        // Only trigger design approval when the design is actually approved
         if (response.type === "design_and_products" && response.status === "approved") {
           logger.info("Design and product approved", { 
             imageUrl: response.design.imageUrl,

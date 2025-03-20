@@ -170,7 +170,6 @@ export class OrchestratorAgent {
       logger.info("Processing design feedback", { isApproved: feedback.isApproved });
 
       if (feedback.isApproved) {
-        // Move to product selection phase
         this.context.set("designRefinementMode", false);
         this.context.set("designApproved", true);
         this.context.set("productSelectionMode", true);
@@ -182,10 +181,9 @@ export class OrchestratorAgent {
 
         const response: OrchestratorResponse = {
           type: "design_and_products",
-          design: JSON.parse(this.context.get("currentDesign")),
           products,
           hasMore,
-          status: "approved",
+          status: "selecting",
           message: `Perfect! I've found some products that match your requirements. Take a look at these options and let me know which one you prefer. ${hasMore ? "\n\nIf none of these are quite right, I can show you more options." : ""}`
         };
 
@@ -274,7 +272,6 @@ export class OrchestratorAgent {
 
         const response: OrchestratorResponse = {
           type: "design_and_products",
-          design: JSON.parse(this.context.get("currentDesign")),
           products,
           hasMore,
           status: "selecting",
@@ -292,7 +289,6 @@ export class OrchestratorAgent {
 
         const productsResponse = JSON.parse(this.context.get("currentProducts"));
         const products = productsResponse.products as PrintifyBlueprint[];
-
         const selectedProduct = products[selection.selectedIndex];
 
         if (!selectedProduct) {
@@ -301,13 +297,9 @@ export class OrchestratorAgent {
 
         logger.info("Selected product:", { selectedProduct });
 
-        // Create final response with both approved design and selected product
         const response: OrchestratorResponse = {
-          type: "design_and_products",
-          design: JSON.parse(this.context.get("currentDesign")),
-          products: [selectedProduct],
-          status: "approved",
-          message: "Great choice! Your product has been configured with the approved design."
+          type: "chat",
+          message: `Great choice! We'll add your design to the ${selectedProduct.title}.`
         };
 
         return {

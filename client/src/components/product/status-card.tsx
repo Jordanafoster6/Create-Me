@@ -10,30 +10,8 @@ interface ProductStatusCardProps {
   productConfig?: PrintifyProductConfig;
 }
 
-/**
- * ProductStatusCard Component
- * 
- * Displays a floating card with:
- * - Approved design preview (if available)
- * - Selected product preview (if available)
- * - Current product configuration as JSON
- * - Placeholder state when no data is available
- */
 export function ProductStatusCard({ approvedDesignUrl, productConfig }: ProductStatusCardProps) {
-  const emptyConfig: PrintifyProductConfig = {
-    title: "",
-    description: "",
-    blueprint_id: "",
-    print_areas: {
-      front: { src: "" }
-    },
-    variant_ids: [],
-    status: "pending",
-    approved_design_url: "",
-    metadata: {}
-  };
-
-  const hasProduct = productConfig?.status === "product_selected" && productConfig.print_areas?.front?.src;
+  const hasProduct = productConfig?.status === "product_selected" && productConfig.blueprint_id;
 
   return (
     <Card className="w-[300px] p-4 sticky top-4">
@@ -62,13 +40,15 @@ export function ProductStatusCard({ approvedDesignUrl, productConfig }: ProductS
             <Separator className="my-4" />
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Selected Product</h3>
-              <AspectRatio ratio={1}>
-                <img
-                  src={productConfig.print_areas.front.src}
-                  alt={productConfig.title}
-                  className="rounded-md object-cover w-full h-full"
-                />
-              </AspectRatio>
+              {productConfig.print_areas?.front?.src && (
+                <AspectRatio ratio={1}>
+                  <img
+                    src={productConfig.print_areas.front.src}
+                    alt={productConfig.title}
+                    className="rounded-md object-cover w-full h-full"
+                  />
+                </AspectRatio>
+              )}
               <div className="space-y-2">
                 <h4 className="font-medium">{productConfig.title}</h4>
                 {productConfig.description && (
@@ -81,13 +61,14 @@ export function ProductStatusCard({ approvedDesignUrl, productConfig }: ProductS
           </>
         )}
 
-        {(approvedDesignUrl || productConfig) && (
+        {/* Only show configuration debug panel in development */}
+        {process.env.NODE_ENV === 'development' && (approvedDesignUrl || productConfig) && (
           <>
             <Separator className="my-4" />
-            <h3 className="text-lg font-semibold">Product Configuration</h3>
+            <h3 className="text-lg font-semibold">Debug: Product Configuration</h3>
             <ScrollArea className="h-[200px] rounded-md border p-2">
               <pre className="text-xs">
-                {JSON.stringify(productConfig || emptyConfig, null, 2)}
+                {JSON.stringify(productConfig || {}, null, 2)}
               </pre>
             </ScrollArea>
           </>
