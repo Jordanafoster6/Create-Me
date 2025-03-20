@@ -60,23 +60,25 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
           content: data.content
         }]);
 
-        // Only trigger design approval when the design is actually approved
-        if (response.type === "design_and_products" && response.status === "approved") {
-          logger.info("Design approved", { imageUrl: response.design.imageUrl });
-          onDesignApproved?.(response.design.imageUrl);
+        // Handle design approval
+        if (response.type === "design" && response.status === "approved") {
+          logger.info("Design approved", { imageUrl: response.imageUrl });
+          onDesignApproved?.(response.imageUrl);
+        }
 
+        // Handle product selection mode
+        if (response.type === "product_selection" && response.products?.length > 0) {
           const config: PrintifyProductConfig = {
             status: "selecting_product",
-            approved_design_url: response.design.imageUrl,
             title: "",
             description: "",
             print_areas: {
-              front: { src: response.design.imageUrl }
+              front: { src: "" }
             },
             variant_ids: [],
             metadata: {}
           };
-          logger.info("Updating product config", { config });
+          logger.info("Entering product selection", { config });
           onProductConfigUpdate?.(config);
         }
 

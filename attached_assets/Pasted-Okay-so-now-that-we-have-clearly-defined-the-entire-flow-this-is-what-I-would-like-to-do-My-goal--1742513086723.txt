@@ -1,0 +1,13 @@
+Okay so now that we have clearly defined the entire flow, this is what I would like to do.
+
+My goal is to do away with the design and products message type completely. I would like the handle design refinement function to still handle the design refinement process, but once a user has approved a design, the orchestrate should send a general message to the front end, letting the user know that the design process is complete and now it's time to choose a product.
+
+I would like the logic for usage of current product details and the product agent to find the products a user could be looking for functionality to be removed from the handleDesignRefinement function and instead be placed in a separate new orchestrated agent function. This function should serve as the entry point into the product selection mode.
+
+In this function, first we make sure that there are enough product details from the user to try and find a product. If there aren't, send a general message to the user asking for details about the product they are looking for. If we do have enough details, then continue on with the product selection mode and send a message to the user letting them know that we found products that match they're description and to review them and choose the one they want.
+
+While making these changes to the backend, I would like every thing thoroughly commented and made type safe. I would also like the shared types between the front and the backend should be updated if needed. Be sure to remove any code that is no longer being used.
+
+On the front end, I would like the concept of the designer and products response type removed, and instead make all the updates necessary to ensure the changes just made on the backend will work in the front end. Ensure that when a user approves a design it is displayed in the status card component. Also ensure that when a user has selected a product that it's image, name and description are also displayed in the status card.
+
+Do you have any questions before you begin?

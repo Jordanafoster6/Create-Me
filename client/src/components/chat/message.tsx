@@ -42,37 +42,27 @@ export function Message({ message }: MessageProps) {
               <p className="text-sm whitespace-pre-wrap">{response.message}</p>
             )}
 
-            {/* Display design with optional products */}
-            {(response.type === "design" || response.type === "design_and_products") && (
+            {/* Display design with analysis */}
+            {response.type === "design" && (
               <>
-                {/* Message */}
                 {response.message && (
                   <p className="text-sm mb-2">{response.message}</p>
                 )}
 
-                {/* Design Image */}
-                {(response.type === "design" ? response : response.design) && (
-                  <>
-                    <p className="text-sm mb-2">Here's your design:</p>
-                    <AspectRatio ratio={1}>
-                      <img
-                        src={response.type === "design" ? response.imageUrl : response.design.imageUrl}
-                        alt="Generated design"
-                        className="rounded-md object-cover w-full h-full"
-                      />
-                    </AspectRatio>
-                  </>
-                )}
+                <AspectRatio ratio={1}>
+                  <img
+                    src={response.imageUrl}
+                    alt="Generated design"
+                    className="rounded-md object-cover w-full h-full"
+                  />
+                </AspectRatio>
 
-                {/* Analysis */}
-                {(response.type === "design" ? response.analysis : response.design?.analysis) && (
+                {response.analysis && (
                   <div className="mt-4 space-y-2">
                     <h4 className="font-medium">Design Analysis:</h4>
                     {(() => {
                       try {
-                        const analysis: DesignAnalysis = JSON.parse(
-                          response.type === "design" ? response.analysis : response.design.analysis
-                        );
+                        const analysis: DesignAnalysis = JSON.parse(response.analysis);
                         if (!analysis?.imageAnalysis?.description) return null;
 
                         return (
@@ -99,22 +89,22 @@ export function Message({ message }: MessageProps) {
                     })()}
                   </div>
                 )}
+              </>
+            )}
 
-                {/* Products Grid */}
-                {response.type === "design_and_products" && response.products && response.products.length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="font-medium mb-3">Available Products:</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      {response.products.map((product) => (
-                        <ProductPreview
-                          key={product.id}
-                          imageUrl={product.images[0]}
-                          productName={product.title}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
+            {/* Display product selection */}
+            {response.type === "product_selection" && response.products && response.products.length > 0 && (
+              <>
+                <p className="text-sm mb-4">{response.message}</p>
+                <div className="grid grid-cols-2 gap-4">
+                  {response.products.map((product) => (
+                    <ProductPreview
+                      key={product.id}
+                      imageUrl={product.images[0]}
+                      productName={product.title}
+                    />
+                  ))}
+                </div>
               </>
             )}
           </div>

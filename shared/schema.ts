@@ -148,12 +148,11 @@ export const OrchestratorResponseSchema = z.discriminatedUnion("type", [
     status: z.enum(["refining", "approved"])
   }),
   z.object({
-    type: z.literal("design_and_products"),
-    design: DesignResponseSchema,
-    products: z.array(PrintifyBlueprintSchema),
+    type: z.literal("product_selection"),
+    products: z.array(PrintifyBlueprintSchema).optional(),
     message: z.string(),
     hasMore: z.boolean().optional(),
-    status: z.enum(["approved", "selecting"])
+    totalRemaining: z.number().optional()
   })
 ]);
 
