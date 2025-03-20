@@ -19,15 +19,15 @@ interface ProductStatusCardProps {
  */
 export function ProductStatusCard({ approvedDesignUrl, productConfig }: ProductStatusCardProps) {
   const emptyConfig: PrintifyProductConfig = {
-    title: null,
-    description: null,
-    blueprint_id: null,
+    title: "",
+    description: "",
+    blueprint_id: "",
     print_areas: {
-      front: { src: null }
+      front: { src: "" }
     },
     variant_ids: [],
     status: "pending",
-    approved_design_url: null,
+    approved_design_url: "",
     metadata: {}
   };
 

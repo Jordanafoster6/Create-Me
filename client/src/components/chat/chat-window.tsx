@@ -5,32 +5,10 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Message } from "./message";
 import { QuickActions } from "./quick-actions";
-import { ChatMessage } from "@shared/schema";
+import { ChatMessage, OrchestratorResponse, PrintifyProductConfig } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { logger } from "@/lib/logger";
-
-interface PrintifyProductConfig {
-  status: string;
-  approved_design_url: string;
-  title: string;
-  description: string;
-  print_areas: {
-    front: { src: string; };
-  };
-  variant_ids: number[];
-}
-
-interface OrchestratorResponse {
-  type: string;
-  status: string;
-  imageUrl?: string;
-  design?: {
-    status: string;
-    imageUrl: string;
-  };
-}
-
 
 interface ChatWindowProps {
   onDesignApproved?: (designUrl: string) => void;
@@ -46,14 +24,14 @@ interface ChatWindowProps {
  * - Quick action buttons
  * - Loading states
  * - Error handling
+ * - Design approval and product configuration callbacks
  */
 export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWindowProps) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      content:
-        "Hello! I'm your AI product customization assistant. How can I help you create something unique today?",
+      content: "Hello! I'm your AI product customization assistant. How can I help you create something unique today?",
     },
   ]);
   const { toast } = useToast();
@@ -74,16 +52,23 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
     onSuccess: (data: ChatMessage) => {
       try {
         const response = JSON.parse(data.content) as OrchestratorResponse;
+        logger.info("Processing chat response", { type: response.type });
+
+        // Add the assistant's message to the chat
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: data.content
+        }]);
 
         // Handle design approval
-        if (response.type === "design" && response.status === "approved") {
-          onDesignApproved?.(response.imageUrl!);
+        if (response.type === "design" && response.status === "success") {
+          logger.info("Design approved", { imageUrl: response.imageUrl });
+          onDesignApproved?.(response.imageUrl);
         }
 
         // Handle product configuration updates
-        if (response.type === "design_and_products" && response.design?.status === "approved") {
-          onDesignApproved?.(response.design.imageUrl);
-          onProductConfigUpdate?.({
+        if (response.type === "design_and_products") {
+          const config: PrintifyProductConfig = {
             status: "selecting_product",
             approved_design_url: response.design.imageUrl,
             title: "",
@@ -91,17 +76,15 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
             print_areas: {
               front: { src: response.design.imageUrl }
             },
-            variant_ids: []
-          });
+            variant_ids: [],
+            metadata: {}
+          };
+          logger.info("Updating product config", { config });
+          onProductConfigUpdate?.(config);
+          onDesignApproved?.(response.design.imageUrl);
         }
 
-        setMessages(prev => [...prev, {
-          role: "assistant",
-          content: data.content
-        }]);
-
         queryClient.invalidateQueries({ queryKey: ["/api/chat"] });
-        logger.info("Successfully received chat response");
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
         logger.error("Error processing chat response:", { error: errorMessage });
