@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { ChatMessage, DesignAnalysis } from "@shared/schema";
+import { ChatMessage, DesignAnalysis, DesignResponse } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { ProductPreview } from "@/components/product/preview";
@@ -14,32 +14,34 @@ export function Message({ message }: MessageProps) {
   let contentType = "text";
   let analysis: DesignAnalysis | null = null;
   let products = null;
-  let designUrl: string | null = null;
-  console.log('Processing message:', message);
+  let jsonContent: any = null;
 
-  if (!isUser) {
+  if (!isUser && message.content) {
     try {
-      const jsonContent = JSON.parse(message.content);
-      console.log('Parsed message content:', jsonContent);
-
+      jsonContent = JSON.parse(message.content);
       if (jsonContent.type === "design_and_products") {
         contentType = "design_and_products";
-        parsedContent = jsonContent.message || "";
-        designUrl = jsonContent.design?.imageUrl;
-        products = jsonContent.products;
-      } else if (jsonContent.type === "design") {
-        contentType = "design";
-        designUrl = jsonContent.imageUrl;
-        parsedContent = jsonContent.message || "";
-        if (jsonContent.analysis) {
+        parsedContent = jsonContent.message;
+        if (jsonContent.design?.analysis) {
           try {
-            analysis = JSON.parse(jsonContent.analysis);
+            analysis = JSON.parse(jsonContent.design.analysis) as DesignAnalysis;
           } catch (error) {
             console.warn("Could not parse design analysis:", error);
           }
         }
-      } else if (jsonContent.type === "chat") {
-        parsedContent = jsonContent.message || "";
+        products = jsonContent.products;
+      } else if (jsonContent.type === "design") {
+        contentType = "design";
+        parsedContent = jsonContent.imageUrl;
+        if (jsonContent.analysis) {
+          try {
+            analysis = JSON.parse(jsonContent.analysis) as DesignAnalysis;
+          } catch (error) {
+            console.warn("Could not parse analysis:", error);
+          }
+        }
+      } else if (jsonContent.type === "chat" && jsonContent.message) {
+        parsedContent = jsonContent.message;
       }
     } catch (error) {
       console.debug("Message is not JSON:", message.content);
@@ -47,26 +49,49 @@ export function Message({ message }: MessageProps) {
   }
 
   return (
-    <div className={cn("flex mb-4", isUser ? "justify-end" : "justify-start")}>
+    <div
+      className={cn(
+        "flex mb-4",
+        isUser ? "justify-end" : "justify-start"
+      )}
+    >
       <Card
         className={cn(
           "max-w-[80%] p-4",
-          isUser ? "bg-primary text-primary-foreground" : "bg-secondary",
+          isUser ? "bg-primary text-primary-foreground" : "bg-secondary"
         )}
       >
         {contentType === "design_and_products" ? (
           <div className="space-y-4">
-            {parsedContent && <p className="text-sm mb-2">{parsedContent}</p>}
-            {designUrl && (
+            <p className="text-sm mb-2">{parsedContent}</p>
+            {jsonContent?.design && (
               <>
                 <p className="text-sm mb-2">Here's your initial design:</p>
                 <AspectRatio ratio={1}>
                   <img
-                    src={designUrl}
+                    src={jsonContent.design.imageUrl}
                     alt="Generated design"
                     className="rounded-md object-cover w-full h-full"
                   />
                 </AspectRatio>
+                {analysis?.imageAnalysis && (
+                  <div className="mt-4 space-y-2">
+                    <h4 className="font-medium">Design Analysis:</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {analysis.imageAnalysis.description}
+                    </p>
+                    {analysis.suggestions && Object.entries(analysis.suggestions).length > 0 && (
+                      <>
+                        <h4 className="font-medium mt-3">Suggestions:</h4>
+                        <ul className="text-sm text-muted-foreground list-disc pl-4">
+                          {Object.entries(analysis.suggestions).map(([key, value]) => (
+                            <li key={key}>{value}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                  </div>
+                )}
               </>
             )}
             {products && products.length > 0 && (
@@ -76,8 +101,8 @@ export function Message({ message }: MessageProps) {
                   {products.map((product: any, index: number) => (
                     <ProductPreview
                       key={index}
-                      imageUrl={product.images?.[0] || ''}
-                      productName={product.title || `Product ${index + 1}`}
+                      imageUrl={product.images[0]}
+                      productName={product.title}
                     />
                   ))}
                 </div>
@@ -86,35 +111,30 @@ export function Message({ message }: MessageProps) {
           </div>
         ) : contentType === "design" ? (
           <div className="space-y-4">
-            {parsedContent && <p className="text-sm mb-2">{parsedContent}</p>}
-            {designUrl && (
-              <AspectRatio ratio={1}>
-                <img
-                  src={designUrl}
-                  alt="Generated design"
-                  className="rounded-md object-cover w-full h-full"
-                />
-              </AspectRatio>
-            )}
+            <p className="text-sm mb-2">Here's your generated design:</p>
+            <AspectRatio ratio={1}>
+              <img
+                src={parsedContent}
+                alt="Generated design"
+                className="rounded-md object-cover w-full h-full"
+              />
+            </AspectRatio>
             {analysis?.imageAnalysis && (
               <div className="mt-4 space-y-2">
                 <h4 className="font-medium">Design Analysis:</h4>
                 <p className="text-sm text-muted-foreground">
                   {analysis.imageAnalysis.description}
                 </p>
-                {analysis.suggestions &&
-                  Object.entries(analysis.suggestions).length > 0 && (
-                    <>
-                      <h4 className="font-medium mt-3">Suggestions:</h4>
-                      <ul className="text-sm text-muted-foreground list-disc pl-4">
-                        {Object.entries(analysis.suggestions).map(
-                          ([key, value]) => (
-                            <li key={key}>{value}</li>
-                          ),
-                        )}
-                      </ul>
-                    </>
-                  )}
+                {analysis.suggestions && Object.entries(analysis.suggestions).length > 0 && (
+                  <>
+                    <h4 className="font-medium mt-3">Suggestions:</h4>
+                    <ul className="text-sm text-muted-foreground list-disc pl-4">
+                      {Object.entries(analysis.suggestions).map(([key, value]) => (
+                        <li key={key}>{value}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
               </div>
             )}
           </div>

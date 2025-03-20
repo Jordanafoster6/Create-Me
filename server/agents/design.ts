@@ -13,11 +13,9 @@ export class DesignAgent {
 
       // Generate image using DALL-E
       const imageUrl = await generateImage(prompt);
-      console.log('Generated image URL:', imageUrl);
 
       // Analyze the generated image
       const analysis = await analyzeImage(imageUrl);
-      console.log('Image analysis:', analysis);
 
       return JSON.stringify({
         type: "design",
@@ -45,11 +43,9 @@ Keep the core elements while applying these modifications.`;
 
       // Generate new image with combined context
       const newImageUrl = await generateImage(this.currentPrompt);
-      console.log('Generated modified image URL:', newImageUrl);
 
       // Analyze the new image
       const analysis = await analyzeImage(newImageUrl);
-      console.log('Modified image analysis:', analysis);
 
       return JSON.stringify({
         type: "design",

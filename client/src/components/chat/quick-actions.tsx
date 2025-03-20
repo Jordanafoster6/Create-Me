@@ -19,10 +19,6 @@ export function QuickActions({ onAction }: QuickActionsProps) {
       text: "looks good!",
     },
     {
-      label: "More Products",
-      text: "Can I see more products?",
-    },
-    {
       label: "Pick Product",
       text: "I like the 3rd product best",
     },

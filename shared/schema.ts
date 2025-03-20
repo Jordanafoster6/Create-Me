@@ -89,16 +89,10 @@ export const DesignAnalysisSchema = z.object({
 });
 
 export const DesignResponseSchema = z.object({
-  type: z.enum(["design", "design_and_products", "chat"]),
-  imageUrl: z.string().optional(),
-  message: z.string().optional(),
-  analysis: z.string().optional(),
-  design: z.object({
-    imageUrl: z.string(),
-    analysis: z.string()
-  }).optional(),
-  products: z.array(z.any()).optional(),
-  status: z.string().optional()
+  type: z.literal("design"),
+  imageUrl: z.string(),
+  analysis: z.string(),
+  status: z.string()
 });
 
 export type DesignAnalysis = z.infer<typeof DesignAnalysisSchema>;
