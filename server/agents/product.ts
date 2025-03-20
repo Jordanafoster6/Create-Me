@@ -71,11 +71,23 @@ export class ProductResearchAgent {
       ...(blueprint.preview ? [blueprint.preview] : [])
     ];
 
+    console.log('Transforming blueprint to product response:', {
+      id: blueprint.id,
+      title: blueprint.title,
+      description: blueprint.description,
+      imagesSources: {
+        images: blueprint.images,
+        image: blueprint.image,
+        preview: blueprint.preview
+      },
+      combinedImages: images
+    });
+
     return {
       id: blueprint.id,
       title: blueprint.title,
       description: blueprint.description || '',
-      images: images.length > 0 ? images : []
+      images: images
     };
   }
 
