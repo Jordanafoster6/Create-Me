@@ -47,16 +47,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Product status endpoint
-  app.get("/api/product-status", async (req, res) => {
-    try {
-      const response = await orchestrator.getProductStatus();
-      res.json(response);
-    } catch (error: any) {
-      res.status(400).json({ error: error?.message || 'Invalid request' });
-    }
-  });
-
   const httpServer = createServer(app);
   return httpServer;
 }

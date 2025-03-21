@@ -148,11 +148,12 @@ export const OrchestratorResponseSchema = z.discriminatedUnion("type", [
     status: z.enum(["refining", "approved"])
   }),
   z.object({
-    type: z.literal("product_selection"),
-    products: z.array(PrintifyBlueprintSchema).optional(),
+    type: z.literal("design_and_products"),
+    design: DesignResponseSchema,
+    products: z.array(PrintifyBlueprintSchema),
     message: z.string(),
     hasMore: z.boolean().optional(),
-    totalRemaining: z.number().optional()
+    status: z.enum(["approved", "selecting"]) 
   })
 ]);
 
@@ -174,15 +175,3 @@ export const PrintifyProductConfigSchema = z.object({
 });
 
 export type PrintifyProductConfig = z.infer<typeof PrintifyProductConfigSchema>;
-
-export const ProductStatusResponseSchema = z.object({
-  approvedImageUrl: z.string().optional(),
-  selectedProduct: z.object({
-    productImg: z.string(),
-    productName: z.string(),
-    productDescription: z.string()
-  }).optional(),
-  productConfigObject: PrintifyProductConfigSchema.optional()
-});
-
-export type ProductStatusResponse = z.infer<typeof ProductStatusResponseSchema>;
