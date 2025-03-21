@@ -45,8 +45,10 @@ export class OrchestratorAgent {
 
   /**
    * Processes incoming user messages and orchestrates the appropriate response
+   * 
    * @param message The incoming chat message
    * @returns Promise<ChatMessage> A properly formatted and validated response
+   * @throws Error if message processing fails
    */
   async processMessage(message: ChatMessage): Promise<ChatMessage> {
     try {
@@ -82,22 +84,26 @@ export class OrchestratorAgent {
           message: "I've created an initial design based on your description. How does this look? We can make any adjustments needed."
         };
 
+        // Validate response format
+        const validatedResponse = OrchestratorResponseSchema.parse(response);
+
         return {
           role: "assistant",
-          content: JSON.stringify(OrchestratorResponseSchema.parse(response))
+          content: JSON.stringify(validatedResponse)
         };
       }
 
       // Fallback response for unclear intent
-      const response: OrchestratorResponse = {
+      const fallbackResponse: OrchestratorResponse = {
         type: "chat",
         message: "Could you please tell me what kind of product you'd like to customize and what design you'd like on it?"
       };
 
       return {
         role: "assistant",
-        content: JSON.stringify(response)
+        content: JSON.stringify(fallbackResponse)
       };
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error("Orchestration Error", { error: errorMessage });
@@ -106,9 +112,49 @@ export class OrchestratorAgent {
   }
 
   /**
+   * Parses user intent to extract product details and design requirements
+   * 
+   * @param message The user's message to parse
+   * @returns Promise<ParsedMessage | null> Parsed intent or null if parsing fails
+   */
+  private async parseUserIntent(message: ChatMessage): Promise<ParsedMessage | null> {
+    try {
+      const aiResponse = await generateChatResponse([
+        {
+          role: "user",
+          content: `Parse this into product details and design content. Format response as JSON:
+{
+  "type": "parse",
+  "productDetails": {
+    "type": "product type if mentioned",
+    "color": "color if mentioned",
+    "size": "size if mentioned",
+    "material": "material if mentioned"
+  },
+  "designContent": "description of the design content only"
+}`
+        },
+        message
+      ]);
+
+      const parsed = JSON.parse(aiResponse) as ParsedMessage;
+      logger.info("Successfully parsed user intent", { 
+        productType: parsed.productDetails.type,
+        hasDesignContent: Boolean(parsed.designContent)
+      });
+
+      return parsed;
+    } catch (error) {
+      logger.error("Failed to parse user intent", { error });
+      return null;
+    }
+  }
+
+  /**
    * Handles the design refinement phase of the conversation
+   * 
    * @param message User's feedback on the current design
-   * @returns Promise<ChatMessage> Response with either modified design or transition to product selection
+   * @returns Promise<ChatMessage> Response with either modified design or product options
    */
   private async handleDesignRefinement(message: ChatMessage): Promise<ChatMessage> {
     try {
@@ -127,14 +173,27 @@ export class OrchestratorAgent {
         // Move to product selection phase
         this.context.set("designRefinementMode", false);
         this.context.set("designApproved", true);
+        this.context.set("productSelectionMode", true);
 
-        // Store the approved design
-        const currentDesign = JSON.parse(this.context.get("currentDesign"));
-        currentDesign.status = "approved";
-        this.context.set("currentDesign", JSON.stringify(currentDesign));
+        // Use product details from context and the product agent
+        // to find products matching what the user is looking for
+        const productDetails = this.context.get("currentProductDetails");
+        const productResponse = await this.productAgent.handleSearch(productDetails);
+        const { products, hasMore } = JSON.parse(productResponse);
 
-        // Transition to product selection
-        return await this.initiateProductSelection();
+        const response: OrchestratorResponse = {
+          type: "design_and_products",
+          design: JSON.parse(this.context.get("currentDesign")),
+          products,
+          hasMore,
+          status: "approved", // Add status to indicate this is an approved design
+          message: `Perfect! I've found some products that match your requirements. Take a look at these options and let me know which one you prefer. ${hasMore ? "\n\nIf none of these are quite right, I can show you more options." : ""}`
+        };
+
+        return {
+          role: "assistant",
+          content: JSON.stringify(OrchestratorResponseSchema.parse(response))
+        };
       } else {
         // Modify the design based on feedback
         const newDesign = await this.designAgent.modifyDesign(
@@ -142,13 +201,15 @@ export class OrchestratorAgent {
           feedback.changes
         );
 
+        // Even if analysis failed, we can still return the new design
         const designData = JSON.parse(newDesign);
+
         const response: OrchestratorResponse = {
           type: "design",
           imageUrl: designData.imageUrl,
           originalPrompt: designData.originalPrompt,
           currentPrompt: designData.currentPrompt,
-          status: "refining",
+          status: "refining", // Add status to indicate this is still being refined
           message: "I've updated the design based on your feedback. How does this look now?"
         };
 
@@ -168,64 +229,6 @@ export class OrchestratorAgent {
       logger.error("Design Refinement Error", { error: errorMessage });
       throw new Error(`Design Refinement Error: ${errorMessage}`);
     }
-  }
-
-  /**
-   * Initiates the product selection phase after design approval
-   * @returns Promise<ChatMessage> Response with either product options or request for more details
-   */
-  private async initiateProductSelection(): Promise<ChatMessage> {
-    try {
-      const productDetails = this.context.get("currentProductDetails");
-
-      // Check if we have enough product details
-      if (!this.hasEnoughProductDetails(productDetails)) {
-        const response: OrchestratorResponse = {
-          type: "chat",
-          message: "Great! I've saved your approved design. To help you find the perfect product, could you tell me what type of product you're looking for? For example, t-shirt, hoodie, mug, etc. You can also specify color or material preferences."
-        };
-
-        return {
-          role: "assistant",
-          content: JSON.stringify(OrchestratorResponseSchema.parse(response))
-        };
-      }
-
-      // Get matching products
-      const productResponse = await this.productAgent.handleSearch(productDetails);
-      const { products, hasMore, totalRemaining } = JSON.parse(productResponse);
-
-      const response: OrchestratorResponse = {
-        type: "product_selection",
-        products,
-        hasMore,
-        totalRemaining,
-        message: `Perfect! I've found some products that match your requirements. Take a look at these options and let me know which one you prefer. ${hasMore ? `\n\nThere are ${totalRemaining} more options available if none of these are quite right.` : ""}`
-      };
-
-      this.context.set("productSelectionMode", true);
-
-      return {
-        role: "assistant",
-        content: JSON.stringify(OrchestratorResponseSchema.parse(response))
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error("Product Selection Initiation Error", { error: errorMessage });
-      throw new Error(`Product Selection Initiation Error: ${errorMessage}`);
-    }
-  }
-
-  /**
-   * Validates if we have enough product details to start product search
-   * @param details Product details from context
-   * @returns boolean indicating if we have sufficient details
-   */
-  private hasEnoughProductDetails(details: any): boolean {
-    if (!details || !details.type) return false;
-
-    // Require at least one additional detail besides type
-    return Boolean(details.color || details.size || details.material);
   }
 
   /**
@@ -265,11 +268,11 @@ export class OrchestratorAgent {
         }
 
         const response: OrchestratorResponse = {
-          type: "product_selection",
+          type: "design_and_products",
+          design: JSON.parse(this.context.get("currentDesign")),
           products,
           hasMore,
-          totalRemaining,
-          status: "selecting", 
+          status: "selecting", // Add required status
           message: `Here are some more options that match your requirements. ${hasMore ? `\n\nThere are ${totalRemaining} more options available if none of these are quite right.` : ""}`
         };
 
