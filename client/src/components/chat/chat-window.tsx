@@ -5,7 +5,12 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Message } from "./message";
 import { QuickActions } from "./quick-actions";
-import { ChatMessage, OrchestratorResponse, PrintifyProductConfig } from "@shared/schema";
+import {
+  ChatMessage,
+  OrchestratorResponse,
+  PrintifyProductConfig,
+  PrintifyBlueprint,
+} from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { logger } from "@/lib/logger";
@@ -17,7 +22,7 @@ interface ChatWindowProps {
 
 /**
  * ChatWindow Component
- * 
+ *
  * Handles the main chat interface including:
  * - Message input and submission
  * - Message history display
@@ -26,12 +31,16 @@ interface ChatWindowProps {
  * - Error handling
  * - Design approval and product configuration callbacks
  */
-export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWindowProps) {
+export function ChatWindow({
+  onDesignApproved,
+  onProductConfigUpdate,
+}: ChatWindowProps) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      content: "Hello! I'm your AI product customization assistant. How can I help you create something unique today?",
+      content:
+        "Hello! I'm your AI product customization assistant. How can I help you create something unique today?",
     },
   ]);
   const { toast } = useToast();
@@ -43,7 +52,7 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
         content: messageContent,
         role: "user",
       };
-      setMessages(prev => [...prev, userMessage]);
+      setMessages((prev) => [...prev, userMessage]);
 
       const response = await apiRequest("POST", "/api/chat", userMessage);
       const data = await response.json();
@@ -55,14 +64,22 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
         logger.info("Processing chat response", { type: response.type });
 
         // Add the assistant's message to the chat
-        setMessages(prev => [...prev, {
-          role: "assistant",
-          content: data.content
-        }]);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: data.content,
+          },
+        ]);
 
         // Only trigger design approval when the design is actually approved
-        if (response.type === "design_and_products" && response.status === "approved") {
-          logger.info("Design approved", { imageUrl: response.design.imageUrl });
+        if (
+          response.type === "design_and_products" &&
+          response.status === "approved"
+        ) {
+          logger.info("Design approved", {
+            imageUrl: response.design.imageUrl,
+          });
           onDesignApproved?.(response.design.imageUrl);
 
           const config: PrintifyProductConfig = {
@@ -71,10 +88,10 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
             title: "",
             description: "",
             print_areas: {
-              front: { src: response.design.imageUrl }
+              front: { src: response.design.imageUrl },
             },
             variant_ids: [],
-            metadata: {}
+            metadata: {},
           };
           logger.info("Updating product config", { config });
           onProductConfigUpdate?.(config);
@@ -82,8 +99,11 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
 
         queryClient.invalidateQueries({ queryKey: ["/api/chat"] });
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error";
-        logger.error("Error processing chat response:", { error: errorMessage });
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        logger.error("Error processing chat response:", {
+          error: errorMessage,
+        });
         toast({
           title: "Error processing response",
           description: "There was a problem displaying the message",
@@ -101,6 +121,19 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
     },
   });
 
+  const handleProductSelection = (product: PrintifyBlueprint) => {
+    const userMessage: ChatMessage = {
+      role: "user",
+      content: `I choose product with blueprint ID ${product.id}`,
+    };
+
+    // Add user message
+    setMessages((prev) => [...prev, userMessage]);
+    console.log("product selection to backend", JSON.stringify(userMessage)); // TODO: Remove this
+    // Send to backend
+    sendMessage.mutate(JSON.stringify(userMessage));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
@@ -113,7 +146,11 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
     <div className="flex flex-col h-full">
       <ScrollArea className="flex-1 p-4">
         {messages.map((message, i) => (
-          <Message key={i} message={message} />
+          <Message
+            key={i}
+            message={message}
+            onUserSelectProduct={handleProductSelection}
+          />
         ))}
         {sendMessage.isPending && (
           <div className="flex justify-start mb-4">
@@ -130,8 +167,14 @@ export function ChatWindow({ onDesignApproved, onProductConfigUpdate }: ChatWind
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message..."
+            aria-label="Chat message input"
             className="flex-1"
             disabled={sendMessage.isPending}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                handleSubmit(e);
+              }
+            }}
           />
           <Button
             type="submit"

@@ -15,7 +15,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = await orchestrator.processMessage(message);
       res.json(response);
     } catch (error: any) {
-      res.status(400).json({ error: error?.message || 'Invalid request' });
+      res.status(400).json({ error: error?.message || "Invalid request" });
     }
   });
 
@@ -25,11 +25,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { prompt, conversationId } = DesignRequestSchema.parse(req.body);
       const design = await orchestrator.processMessage({
         role: "user",
-        content: JSON.stringify({ type: "design_generation", prompt, conversationId })
+        content: JSON.stringify({
+          type: "design_generation",
+          prompt,
+          conversationId,
+        }),
       });
       res.json(design);
     } catch (error: any) {
-      res.status(400).json({ error: error?.message || 'Invalid request' });
+      res.status(400).json({ error: error?.message || "Invalid request" });
     }
   });
 
@@ -39,11 +43,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const query = z.string().optional().parse(req.query.q);
       const products = await orchestrator.processMessage({
         role: "user",
-        content: JSON.stringify({ type: "product_search", query: query || "" })
+        content: JSON.stringify({ type: "product_search", query: query || "" }),
       });
       res.json(products);
     } catch (error: any) {
-      res.status(400).json({ error: error?.message || 'Invalid request' });
+      res.status(400).json({ error: error?.message || "Invalid request" });
     }
   });
 

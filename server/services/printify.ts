@@ -4,7 +4,7 @@ import {
   PrintifyVariant,
   PrintifyBlueprint,
   ProductSearchResponse,
-  PrintifyProduct
+  PrintifyProduct,
 } from "@shared/schema";
 
 const PRINTIFY_API_URL = "https://api.printify.com/v1";
@@ -28,7 +28,10 @@ const api = axios.create({
  * @returns Promise<{ data: PrintifyBlueprint[], status: string }>
  * @throws Error if API request fails or returns invalid data
  */
-export async function getBlueprints(): Promise<{ data: PrintifyBlueprint[], status: string }> {
+export async function getBlueprints(): Promise<{
+  data: PrintifyBlueprint[];
+  status: string;
+}> {
   try {
     const response = await api.get("/catalog/blueprints.json");
 
@@ -40,11 +43,14 @@ export async function getBlueprints(): Promise<{ data: PrintifyBlueprint[], stat
     logger.info("Successfully retrieved Printify blueprints");
     return {
       data: response.data,
-      status: "success"
+      status: "success",
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    logger.error("Failed to fetch Printify blueprints", { error: errorMessage });
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    logger.error("Failed to fetch Printify blueprints", {
+      error: errorMessage,
+    });
     throw new Error(`Printify Blueprints Error: ${errorMessage}`);
   }
 }
@@ -65,13 +71,16 @@ export async function createProduct(config: {
   try {
     const response = await api.post(`/shops/${SHOP_ID}/products.json`, config);
 
-    logger.info("Successfully created Printify product", { productId: response.data.id });
+    logger.info("Successfully created Printify product", {
+      productId: response.data.id,
+    });
     return response.data;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    logger.error("Failed to create Printify product", { 
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    logger.error("Failed to create Printify product", {
       error: errorMessage,
-      config
+      config,
     });
     throw new Error(`Printify Create Product Error: ${errorMessage}`);
   }
@@ -83,19 +92,20 @@ export async function createProduct(config: {
  * @returns Promise<any> Publishing confirmation
  * @throws Error if publishing fails
  */
-export async function publishProduct(productId: string): Promise<any> {
+export async function publishProduct(productId: number): Promise<any> {
   try {
     const response = await api.post(
-      `/shops/${SHOP_ID}/products/${productId}/publish.json`
+      `/shops/${SHOP_ID}/products/${productId}/publish.json`,
     );
 
     logger.info("Successfully published Printify product", { productId });
     return response.data;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    logger.error("Failed to publish Printify product", { 
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    logger.error("Failed to publish Printify product", {
       error: errorMessage,
-      productId 
+      productId,
     });
     throw new Error(`Printify Publish Error: ${errorMessage}`);
   }
@@ -109,7 +119,6 @@ export interface PrintifyProduct {
   images: string[];
 }
 
-
 export async function getProducts(): Promise<PrintifyProduct[]> {
   try {
     logger.info("Fetching Printify Products...");
@@ -117,7 +126,8 @@ export async function getProducts(): Promise<PrintifyProduct[]> {
     logger.info("Printify Products API Response:", response.data);
     return response.data.data;
   } catch (error: any) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     logger.error("Printify Products Error:", errorMessage);
     throw new Error(`Printify Products Error: ${errorMessage}`);
   }
@@ -132,7 +142,8 @@ export async function getProduct(productId: string): Promise<PrintifyProduct> {
     logger.info("Printify Product API Response:", response.data);
     return response.data;
   } catch (error: any) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     logger.error("Printify Product Error:", errorMessage);
     throw new Error(`Printify Product Error: ${errorMessage}`);
   }

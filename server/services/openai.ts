@@ -8,7 +8,7 @@ if (!process.env.OPENAI_API_KEY) {
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. 
+// the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
 // do not change this unless explicitly requested by the user
 const GPT_MODEL = "gpt-4o";
 
@@ -18,7 +18,9 @@ const GPT_MODEL = "gpt-4o";
  * @returns Promise<string> Generated response content
  * @throws Error if API call fails
  */
-export async function generateChatResponse(messages: ChatMessage[]): Promise<string> {
+export async function generateChatResponse(
+  messages: ChatMessage[],
+): Promise<string> {
   try {
     const systemMessage = {
       role: "system",
@@ -52,13 +54,13 @@ For design modifications:
   "modifications": "Description of changes"
 }
 
-Always respond with properly formatted JSON.`
+Always respond with properly formatted JSON.`,
     };
 
     const response = await openai.chat.completions.create({
       model: GPT_MODEL,
       messages: [systemMessage, ...messages],
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
     });
 
     if (!response.choices[0].message.content) {
@@ -68,10 +70,11 @@ Always respond with properly formatted JSON.`
     logger.info("Successfully generated chat response");
     return response.choices[0].message.content;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    logger.error("OpenAI Chat Error", { 
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    logger.error("OpenAI Chat Error", {
       error: errorMessage,
-      messages: messages.map(m => ({ role: m.role })) // Log roles only for privacy
+      messages: messages.map((m) => ({ role: m.role })), // Log roles only for privacy
     });
     throw new Error(`OpenAI Chat Error: ${errorMessage}`);
   }
@@ -97,13 +100,16 @@ export async function generateImage(prompt: string): Promise<string> {
       throw new Error("No image URL returned from DALL-E");
     }
 
-    logger.info("Successfully generated image", { promptLength: prompt.length });
+    logger.info("Successfully generated image", {
+      promptLength: prompt.length,
+    });
     return response.data[0].url;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    logger.error("DALL-E Image Generation Error", { 
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    logger.error("DALL-E Image Generation Error", {
       error: errorMessage,
-      promptLength: prompt.length 
+      promptLength: prompt.length,
     });
     throw new Error(`DALL-E Image Generation Error: ${errorMessage}`);
   }
@@ -114,7 +120,9 @@ export async function generateImage(prompt: string): Promise<string> {
  * @param imageUrl URL of the image to analyze
  * @returns Promise<string> JSON string containing analysis results or undefined if analysis fails
  */
-export async function analyzeImage(imageUrl: string): Promise<string | undefined> {
+export async function analyzeImage(
+  imageUrl: string,
+): Promise<string | undefined> {
   try {
     const response = await openai.chat.completions.create({
       model: GPT_MODEL,
@@ -122,18 +130,18 @@ export async function analyzeImage(imageUrl: string): Promise<string | undefined
         {
           role: "user",
           content: [
-            { 
-              type: "text", 
-              text: "Analyze this image and provide feedback in JSON format. Include suggestions for product printing improvements:" 
+            {
+              type: "text",
+              text: "Analyze this image and provide feedback in JSON format. Include suggestions for product printing improvements:",
             },
-            { 
-              type: "image_url", 
-              image_url: { url: imageUrl } 
-            }
+            {
+              type: "image_url",
+              image_url: { url: imageUrl },
+            },
           ],
         },
       ],
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
     });
 
     const content = response.choices[0].message.content;
@@ -145,7 +153,8 @@ export async function analyzeImage(imageUrl: string): Promise<string | undefined
     logger.info("Successfully analyzed image");
     return content;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     logger.error("Image Analysis Error", { error: errorMessage });
     logger.warn("Continuing without image analysis");
     return undefined;

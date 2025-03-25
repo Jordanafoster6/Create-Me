@@ -1,4 +1,12 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  serial,
+  integer,
+  boolean,
+  jsonb,
+  timestamp,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -136,7 +144,7 @@ export type ProductSearchResponse = z.infer<typeof ProductSearchResponseSchema>;
 export const OrchestratorResponseSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("chat"),
-    message: z.string()
+    message: z.string(),
   }),
   z.object({
     type: z.literal("design"),
@@ -145,7 +153,7 @@ export const OrchestratorResponseSchema = z.discriminatedUnion("type", [
     originalPrompt: z.string(),
     currentPrompt: z.string(),
     message: z.string().optional(),
-    status: z.enum(["refining", "approved"])
+    status: z.enum(["refining", "approved"]),
   }),
   z.object({
     type: z.literal("design_and_products"),
@@ -153,8 +161,13 @@ export const OrchestratorResponseSchema = z.discriminatedUnion("type", [
     products: z.array(PrintifyBlueprintSchema),
     message: z.string(),
     hasMore: z.boolean().optional(),
-    status: z.enum(["approved", "selecting"]) 
-  })
+    status: z.enum(["approved", "selecting"]),
+  }),
+  z.object({
+    type: z.literal("product_selection"),
+    status: z.enum(["confirmed", "selecting"]),
+    selectedProduct: z.number(),
+  }),
 ]);
 
 export type OrchestratorResponse = z.infer<typeof OrchestratorResponseSchema>;
@@ -163,15 +176,17 @@ export const PrintifyProductConfigSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
   blueprint_id: z.string().optional(),
-  print_areas: z.object({
-    front: z.object({
-      src: z.string()
+  print_areas: z
+    .object({
+      front: z.object({
+        src: z.string(),
+      }),
     })
-  }).optional(),
+    .optional(),
   variant_ids: z.array(z.number()).optional(),
   status: z.string().optional(),
   approved_design_url: z.string().optional(),
-  metadata: z.record(z.unknown()).optional()
+  metadata: z.record(z.unknown()).optional(),
 });
 
 export type PrintifyProductConfig = z.infer<typeof PrintifyProductConfigSchema>;

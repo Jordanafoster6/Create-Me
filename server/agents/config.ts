@@ -1,64 +1,70 @@
+/**
+ * Product Configuration Service
+ * Handles Printify product creation and publishing
+ */
 import { createProduct, publishProduct } from "../services/printify";
 import { logger } from "../utils/logger";
 
-interface ProductConfig {
+type ProductConfig = {
+  blueprint_id: string;
   title: string;
   description: string;
-  blueprint_id: string;
   print_areas: {
     front: { src: string };
   };
   variant_ids: number[];
-}
+};
 
-/**
- * Configuration Agent handles the creation and publishing of customized products
- */
 export class ConfigurationAgent {
   /**
-   * Configures a new product with the specified design
-   * @param productId Blueprint ID of the product to create
-   * @param designId ID/URL of the design to apply
-   * @returns Promise<string> JSON string containing configuration result
-   * @throws Error if product configuration or publishing fails
+   * Creates and publishes a configured product
+   * @param productId - Printify blueprint ID
+   * @param designUrl - URL of generated design image
+   * @returns Printify product creation result
    */
-  async configureProduct(productId: string, designId: string): Promise<string> {
+  async configureProduct(
+    productId: string,
+    designUrl: string,
+  ): Promise<string> {
     try {
-      logger.info("Starting product configuration", { productId, designId });
+      logger.info("Configuring product", { productId });
 
-      // Create product configuration
-      const config: ProductConfig = {
-        title: "Custom Design Product",
-        description: "Uniquely designed product using AI",
-        blueprint_id: productId,
-        print_areas: {
-          front: { src: designId }
-        },
-        variant_ids: [1] // Default variant
-      };
-
-      // Create and publish the product
+      // TODO: Make sure build config function does a comprehensive config
+      const config = this.buildConfig(productId, designUrl);
+      // Create product on Printify
       const product = await createProduct(config);
       await publishProduct(product.id);
 
-      const response = {
-        productId: product.id,
-        status: "success"
-      };
-
-      logger.info("Successfully configured and published product", {
-        productId: product.id
-      });
-
-      return JSON.stringify(response);
+      logger.info("Product published successfully", { productId: product.id });
+      return JSON.stringify({ productId: product.id, status: "success" });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error("Product Configuration Error", { 
-        error: errorMessage,
-        productId,
-        designId
-      });
-      throw new Error(`Product Configuration Error: ${errorMessage}`);
+      this.handleError(error, productId, designUrl);
     }
+  }
+
+  /** Constructs Printify API payload */
+  private buildConfig(productId: string, designUrl: string): ProductConfig {
+    return {
+      blueprint_id: productId,
+      title: "Custom Design Product",
+      description: "AI-Generated Custom Product",
+      print_areas: { front: { src: designUrl } },
+      variant_ids: [1], // Default variant
+    };
+  }
+
+  /** Error handling with context */
+  private handleError(
+    error: unknown,
+    productId: string,
+    designUrl: string,
+  ): never {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    logger.error("Configuration Failed", {
+      error: message,
+      productId,
+      designUrl,
+    });
+    throw new Error(`Product Configuration Error: ${message}`);
   }
 }
