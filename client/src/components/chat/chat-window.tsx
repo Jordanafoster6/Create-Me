@@ -10,6 +10,7 @@ import {
   OrchestratorResponse,
   PrintifyProductConfig,
   PrintifyBlueprint,
+  ProductSelectionMessage
 } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -121,17 +122,20 @@ export function ChatWindow({
     },
   });
 
-  const handleProductSelection = (product: PrintifyBlueprint) => {
-    const userMessage: ChatMessage = {
-      role: "user",
-      content: `I choose product with blueprint ID ${product.id}`,
+  const handleProductSelection = (productId: number) => {
+    const message: ProductSelectionMessage = {
+      type: "product_selection",
+      blueprintId: productId,
     };
 
-    // Add user message
-    setMessages((prev) => [...prev, userMessage]);
-    console.log("product selection to backend", JSON.stringify(userMessage)); // TODO: Remove this
+    // Add selection message to chat
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: JSON.stringify(message) },
+    ]);
+
     // Send to backend
-    sendMessage.mutate(JSON.stringify(userMessage));
+    sendMessage.mutate(JSON.stringify(message));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -149,7 +153,7 @@ export function ChatWindow({
           <Message
             key={i}
             message={message}
-            onUserSelectProduct={handleProductSelection}
+            onProductSelect={handleProductSelection}
           />
         ))}
         {sendMessage.isPending && (

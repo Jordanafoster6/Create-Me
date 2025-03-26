@@ -2,6 +2,8 @@ import {
   ChatMessage,
   OrchestratorResponse,
   OrchestratorResponseSchema,
+  ProductSelectionMessage,
+  ProductSelectionMessageSchema,
 } from "@shared/schema";
 import { generateChatResponse } from "../services/openai";
 import { ProductResearchAgent } from "./product";
@@ -254,104 +256,60 @@ export class OrchestratorAgent {
    * @returns Promise<ChatMessage> Response with either more products or confirmation
    */
   private async handleProductSelection(
-    message: ChatMessage,
+    message: ChatMessage
   ): Promise<ChatMessage> {
     try {
-      const selectionResponse = await generateChatResponse([
-        {
-          role: "user",
-          content:
-            "Determine if this message requests more product options. Respond with JSON: { type: 'product_selection', wantsMore: boolean, selectedProduct: number or null }",
-        },
-        message,
-      ]);
+      let productId: number;
 
-      const selection = JSON.parse(selectionResponse);
-      logger.info("Processing product selection", {
-        wantsMore: selection.wantsMore,
-      });
-
-      // Start product viewing and selection
-      if (selection.wantsMore) {
-        const productDetails = this.context.get("currentProductDetails");
-        const productResponse = await this.productAgent.handleSearch(
-          productDetails,
-          false,
-        );
-        const { products, hasMore, totalRemaining } =
-          JSON.parse(productResponse);
-
-        if (products.length === 0) {
-          const response: OrchestratorResponse = {
-            type: "chat",
-            message:
-              "I've shown you all the available products that match your requirements. Would you like to try a different type of product?",
-          };
-
-          return {
-            role: "assistant",
-            content: JSON.stringify(OrchestratorResponseSchema.parse(response)),
-          };
-        }
-
-        const response: OrchestratorResponse = {
-          type: "design_and_products",
-          design: JSON.parse(this.context.get("currentDesign")),
-          products,
-          hasMore,
-          status: "selecting", // Add required status
-          message: `Here are some more options that match your requirements. ${hasMore ? `\n\nThere are ${totalRemaining} more options available if none of these are quite right.` : ""}`,
-        };
-
-        return {
-          role: "assistant",
-          content: JSON.stringify(OrchestratorResponseSchema.parse(response)),
-        };
-      }
-
-      if (selection.selectedProduct !== null) {
-        const blueprint = await this.productAgent.getBlueprintById(
-          selection.selectedProduct,
-        );
-
-        if (!blueprint) {
-          return {
-            role: "assistant",
-            content: JSON.stringify(
-              OrchestratorResponseSchema.parse({
-                type: "chat",
-                message: `I couldn't find the product with ID ${selection.selectedProduct}. Please try again.`,
-              }),
-            ),
-          };
-        }
-
-        this.context.set("productSelectionMode", false);
-        this.context.set("selectedProduct", selection.selectedProduct);
-
-        const response: OrchestratorResponse = {
-          type: "product_selection",
-          status: "confirmed",
-          // selectedProduct: selection.selectedProduct,
-          selectedProduct: {
-            id: blueprint.id,
-            print_provider_id: blueprint.print_provider_id,
-            title: blueprint.title,
-            description: blueprint.description,
-            image: blueprint.image,
+      // Try parsing as structured message first
+      try {
+        const parsed = JSON.parse(message.content);
+        const validatedMessage = ProductSelectionMessageSchema.parse(parsed);
+        productId = validatedMessage.blueprintId;
+        logger.info("Parsed structured product selection", { productId });
+      } catch (error) {
+        // Fallback to AI parsing for text messages
+        const selectionResponse = await generateChatResponse([
+          {
+            role: "user",
+            content: "Extract the product ID from this message. Respond with JSON: { blueprintId: number }",
           },
-        };
+          message,
+        ]);
 
+        const parsed = JSON.parse(selectionResponse);
+        productId = parsed.blueprintId;
+        logger.info("Extracted product ID from text", { productId });
+      }
+
+      const blueprint = await this.productAgent.getBlueprintById(productId);
+
+      if (!blueprint) {
         return {
           role: "assistant",
-          content: JSON.stringify(OrchestratorResponseSchema.parse(response)),
+          content: JSON.stringify(
+            OrchestratorResponseSchema.parse({
+              type: "chat",
+              message: `I couldn't find the product with ID ${productId}. Please try again.`,
+            })
+          ),
         };
       }
+
+      this.context.set("productSelectionMode", false);
+      this.context.set("selectedProduct", blueprint);
 
       const response: OrchestratorResponse = {
-        type: "chat",
-        message:
-          "I'm not sure if you'd like to see more options or if you've chosen a product. Could you please clarify?",
+        type: "product_selection",
+        status: "confirmed",
+        selectedProduct: {
+          id: blueprint.id,
+          title: blueprint.title,
+          description: blueprint.description || "",
+          image: blueprint.images[0],
+          print_provider_id: blueprint.print_provider_id,
+        },
+        message: `Great choice! I've selected the ${blueprint.title} for your design.`,
       };
 
       return {
@@ -359,8 +317,7 @@ export class OrchestratorAgent {
         content: JSON.stringify(OrchestratorResponseSchema.parse(response)),
       };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       logger.error("Product Selection Error", { error: errorMessage });
       throw new Error(`Product Selection Error: ${errorMessage}`);
     }
