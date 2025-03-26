@@ -332,7 +332,14 @@ export class OrchestratorAgent {
         const response: OrchestratorResponse = {
           type: "product_selection",
           status: "confirmed",
-          selectedProduct: blueprint.id,
+          // selectedProduct: selection.selectedProduct,
+          selectedProduct: {
+            id: blueprint.id,
+            print_provider_id: blueprint.print_provider_id,
+            title: blueprint.title,
+            description: blueprint.description,
+            image: blueprint.image,
+          },
         };
 
         return {

@@ -124,10 +124,7 @@ export function ChatWindow({
   const handleProductSelection = (product: PrintifyBlueprint) => {
     const userMessage: ChatMessage = {
       role: "user",
-      content: JSON.stringify({
-        type: "product_selection",
-        selectedProduct: product.id
-      }),
+      content: `I choose product with blueprint ID ${product.id}`,
     };
 
     // Add user message
