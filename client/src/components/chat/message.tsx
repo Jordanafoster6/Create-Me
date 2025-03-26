@@ -11,10 +11,10 @@ import { ProductPreview } from "@/components/product/preview";
 
 interface MessageProps {
   message: ChatMessage;
-  onProductSelect?: (productId: number) => void;
+  onUserSelectProduct?: (product: PrintifyBlueprint) => void;
 }
 
-export function Message({ message, onProductSelect }: MessageProps) {
+export function Message({ message, onUserSelectProduct }: MessageProps) {
   const isUser = message.role === "user";
   let response: OrchestratorResponse | null = null;
 
@@ -39,28 +39,33 @@ export function Message({ message, onProductSelect }: MessageProps) {
           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         ) : response ? (
           <div className="space-y-4">
+            {/* Display chat message */}
             {response.type === "chat" && (
               <p className="text-sm whitespace-pre-wrap">{response.message}</p>
             )}
 
+            {/* Display chat message */}
             {(response.type === "product_selection" && response.selectedProduct) && (
               <>
                 <p className="text-sm whitespace-pre-wrap">{response.message}</p>
                 <ProductPreview
-                  key={response.selectedProduct.id}
-                  imageUrl={response.selectedProduct.images[0]}
-                  productName={response.selectedProduct.title}
+                  key={product.id}
+                  imageUrl={product.images[0]}
+                  productName={product.title}
                 />
               </>
             )}
 
+            {/* Display design with optional products */}
             {(response.type === "design" ||
               response.type === "design_and_products") && (
               <>
+                {/* Message */}
                 {response.message && (
                   <p className="text-sm mb-2">{response.message}</p>
                 )}
 
+                {/* Design Image */}
                 {(response.type === "design" ? response : response.design) && (
                   <>
                     <p className="text-sm mb-2">Here's your design:</p>
@@ -78,6 +83,7 @@ export function Message({ message, onProductSelect }: MessageProps) {
                   </>
                 )}
 
+                {/* Analysis */}
                 {(response.type === "design"
                   ? response.analysis
                   : response.design?.analysis) && (
@@ -123,19 +129,21 @@ export function Message({ message, onProductSelect }: MessageProps) {
                   </div>
                 )}
 
+                {/* Products Grid */}
                 {response.type === "design_and_products" &&
                   response.products &&
                   response.products.length > 0 && (
                     <div className="mt-6">
                       <h4 className="font-medium mb-3">Available Products:</h4>
                       <div className="grid grid-cols-2 gap-4">
-                        {response.products.map((product) => (
+                        {response.products.map((product, index) => (
                           <button
-                            key={product.id}
-                            onClick={() => onProductSelect?.(product.id)}
+                            key={index}
+                            onClick={() => onUserSelectProduct ?  onUserSelectProduct(product) : {}}
                             className="text-left hover:ring-2 ring-primary rounded-lg transition"
                           >
                             <ProductPreview
+                              key={product.id}
                               imageUrl={product.images[0]}
                               productName={product.title}
                             />

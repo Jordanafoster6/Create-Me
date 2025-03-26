@@ -73,11 +73,6 @@ export const ChatMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
 });
 
-export const ProductSelectionMessageSchema = z.object({
-  type: z.literal("product_selection"),
-  blueprintId: z.number(),
-});
-
 export const DesignRequestSchema = z.object({
   prompt: z.string(),
   conversationId: z.number(),
@@ -171,19 +166,11 @@ export const OrchestratorResponseSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("product_selection"),
     status: z.enum(["confirmed", "selecting"]),
-    selectedProduct: z.object({
-      id: z.number(),
-      title: z.string(),
-      description: z.string(),
-      image: z.string(),
-      print_provider_id: z.number(),
-    }),
-    message: z.string().optional(),
+    selectedProduct: z.number(),
   }),
 ]);
 
 export type OrchestratorResponse = z.infer<typeof OrchestratorResponseSchema>;
-export type ProductSelectionMessage = z.infer<typeof ProductSelectionMessageSchema>;
 
 export const PrintifyProductConfigSchema = z.object({
   title: z.string().optional(),
